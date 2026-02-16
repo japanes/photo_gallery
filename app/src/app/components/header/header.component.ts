@@ -31,8 +31,7 @@ import { User } from '../../models/photo.model';
       <div class="header-right">
         @if (authService.isAuthenticated()) {
           <div class="user-info">
-            <!-- BUG: Using innerHTML - XSS vulnerability -->
-            <span [innerHTML]="user()?.name"></span>
+            <span>{{ user()?.name }}</span>
             <img
               [src]="user()?.avatarUrl || 'assets/default-avatar.png'"
               class="avatar"
