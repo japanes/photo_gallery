@@ -1,11 +1,13 @@
 import { Component, Output, EventEmitter, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { PhotoService } from '../../services/photo.service';
 
-// PROBLEM: Not standalone
 // PROBLEM: No proper dialog/modal implementation (no backdrop, no escape key, no focus trap)
 @Component({
   selector: 'app-upload-dialog',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <!-- BUG: No backdrop click to close, no escape key handler -->
     <!-- BUG: No focus trap for accessibility -->

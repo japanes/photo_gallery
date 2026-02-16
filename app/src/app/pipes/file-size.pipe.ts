@@ -1,8 +1,8 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-// BUG: Not standalone
 @Pipe({
-  name: 'fileSize'
+  name: 'fileSize',
+  standalone: true
 })
 export class FileSizePipe implements PipeTransform {
   // BUG: Using 1000 instead of 1024 for binary file sizes

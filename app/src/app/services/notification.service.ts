@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 
-// PROBLEM: Not provided in root
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class NotificationService {
   // BUG: Using any[], no notification type/interface
   private notifications: any[] = [];

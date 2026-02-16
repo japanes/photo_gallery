@@ -1,13 +1,18 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { PhotoService } from '../../services/photo.service';
 import { NotificationService } from '../../services/notification.service';
 import { Photo } from '../../models/photo.model';
+import { PhotoCardComponent } from '../photo-card/photo-card.component';
+import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component';
 
-// PROBLEM: Not standalone, declared in module
 // PROBLEM: Uses OnInit/OnDestroy lifecycle instead of modern patterns
 @Component({
   selector: 'app-photo-gallery',
+  standalone: true,
+  imports: [CommonModule, FormsModule, PhotoCardComponent, UploadDialogComponent],
   template: `
     <div class="gallery-container">
       <div class="gallery-header">

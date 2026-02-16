@@ -1,9 +1,12 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { PhotoService } from '../../services/photo.service';
 
-// PROBLEM: Not standalone, no OnPush
+// PROBLEM: No OnPush
 @Component({
   selector: 'app-sidebar',
+  standalone: true,
+  imports: [CommonModule],
   template: `
     <!-- BUG: No semantic HTML (should use <aside>, <nav>) -->
     <div class="sidebar">

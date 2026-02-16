@@ -1,10 +1,13 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TruncatePipe } from '../../pipes/truncate.pipe';
 
-// PROBLEM: Not standalone
 // PROBLEM: No OnPush change detection
 // PROBLEM: No accessibility
 @Component({
   selector: 'app-photo-card',
+  standalone: true,
+  imports: [CommonModule, TruncatePipe],
   template: `
     <div class="photo-card" (click)="onSelect()">
       <!-- BUG: No NgOptimizedImage, no lazy loading, no alt text derived from data -->

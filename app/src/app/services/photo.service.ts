@@ -4,9 +4,8 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Photo, Album } from '../models/photo.model';
 
-// PROBLEM: Not using providedIn: 'root', registered in module instead
 // PROBLEM: No error handling, no retry logic, memory leaks
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class PhotoService {
   // BUG: Public mutable state - should be private with signals or proper encapsulation
   public photos: any[] = [];

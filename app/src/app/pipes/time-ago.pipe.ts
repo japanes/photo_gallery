@@ -1,9 +1,9 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-// BUG: Not standalone
 // BUG: Impure pipe for time - will recalculate on every change detection
 @Pipe({
   name: 'timeAgo',
+  standalone: true,
   pure: false // BUG: Impure pipe causes performance issues
 })
 export class TimeAgoPipe implements PipeTransform {
@@ -22,6 +22,6 @@ export class TimeAgoPipe implements PipeTransform {
     // BUG: No handling for months/years, falls through to undefined
     if (seconds < 31536000) return Math.floor(seconds / 2592000) + ' months ago';
 
-    // BUG: Returns nothing for dates older than a year (implicit undefined)
+    return Math.floor(seconds / 31536000) + ' years ago';
   }
 }

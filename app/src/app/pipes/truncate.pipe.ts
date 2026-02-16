@@ -1,9 +1,9 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-// BUG: Not standalone, declared in SharedModule
 // BUG: Not marked as pure (default is pure, but implementation has side effects potential)
 @Pipe({
-  name: 'truncate'
+  name: 'truncate',
+  standalone: true
 })
 export class TruncatePipe implements PipeTransform {
   // BUG: No null/undefined handling, will throw on null values

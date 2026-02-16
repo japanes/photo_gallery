@@ -1,10 +1,14 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
-// PROBLEM: Not standalone, no OnPush
+// PROBLEM: No OnPush
 @Component({
   selector: 'app-header',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   template: `
     <!-- BUG: No semantic HTML (should use <header>, <nav>) -->
     <div class="header">

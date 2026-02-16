@@ -3,8 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
 import { User } from '../models/photo.model';
 
-// PROBLEM: Not tree-shakeable, registered in module
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class AuthService {
   // BUG: Storing sensitive data in plain object, publicly accessible
   public currentUser: any = null;

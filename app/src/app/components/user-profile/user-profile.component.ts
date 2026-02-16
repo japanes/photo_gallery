@@ -1,11 +1,14 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
 
-// PROBLEM: Not standalone
 @Component({
   selector: 'app-user-profile',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="profile-container" *ngIf="user">
       <div class="profile-header">
