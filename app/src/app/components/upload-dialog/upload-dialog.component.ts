@@ -113,7 +113,8 @@ import { Photo, Album } from '../../models/photo.model';
       z-index: 1000;
     }
     .dialog-content {
-      background: white;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       border-radius: 12px;
       padding: 24px;
       width: 90%;
@@ -135,7 +136,7 @@ import { Photo, Album } from '../../models/photo.model';
       border: none;
       font-size: 24px;
       cursor: pointer;
-      color: #999;
+      color: var(--text-tertiary);
     }
     .form-group {
       margin-bottom: 16px;
@@ -144,16 +145,18 @@ import { Photo, Album } from '../../models/photo.model';
       display: block;
       margin-bottom: 4px;
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
     }
     .form-group input[type="text"],
     .form-group select {
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       font-size: 14px;
       box-sizing: border-box;
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
     .error {
       color: #e74c3c;
@@ -168,9 +171,11 @@ import { Photo, Album } from '../../models/photo.model';
     }
     .dialog-actions button {
       padding: 8px 20px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       cursor: pointer;
+      background: var(--bg-primary);
+      color: var(--text-primary);
     }
     .btn-submit {
       background: #3498db;

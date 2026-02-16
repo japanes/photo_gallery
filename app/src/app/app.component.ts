@@ -52,10 +52,9 @@ import { Album } from './models/photo.model';
     .main-content.with-sidebar {
       margin-left: 0;
     }
-    /* BUG: Dark mode styles incomplete */
     .dark-mode {
-      background: #1a1a1a;
-      color: #fff;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
   `]
 })

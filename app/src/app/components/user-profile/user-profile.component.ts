@@ -92,7 +92,7 @@ import { Photo, Album } from '../../models/photo.model';
       align-items: center;
       margin-bottom: 30px;
       padding-bottom: 20px;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid var(--border-color);
     }
     .profile-avatar {
       width: 100px;
@@ -106,14 +106,15 @@ import { Photo, Album } from '../../models/photo.model';
     }
     .profile-info p {
       margin: 0;
-      color: #666;
+      color: var(--text-secondary);
     }
     .role-badge {
       display: inline-block;
       padding: 2px 10px;
       border-radius: 12px;
       font-size: 12px;
-      background: #e9ecef;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       margin-top: 6px;
     }
     .role-badge.admin {
@@ -129,18 +130,18 @@ import { Photo, Album } from '../../models/photo.model';
     .stat-card {
       text-align: center;
       padding: 20px;
-      background: #f8f9fa;
+      background: var(--bg-secondary);
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-color);
     }
     .stat-card h3 {
       font-size: 28px;
       margin: 0;
-      color: #2c3e50;
+      color: var(--text-heading);
     }
     .stat-card p {
       margin: 4px 0 0;
-      color: #666;
+      color: var(--text-secondary);
       font-size: 14px;
     }
     .profile-section {
@@ -148,7 +149,7 @@ import { Photo, Album } from '../../models/photo.model';
     }
     .profile-section h3 {
       margin: 0 0 16px 0;
-      color: #2c3e50;
+      color: var(--text-heading);
     }
     .photo-grid {
       display: grid;
@@ -167,16 +168,18 @@ import { Photo, Album } from '../../models/photo.model';
     .form-group label {
       display: block;
       margin-bottom: 4px;
-      color: #333;
+      color: var(--text-primary);
       font-size: 14px;
     }
     .form-group input {
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       font-size: 14px;
       box-sizing: border-box;
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
     button[type="button"] {
       padding: 10px 24px;
@@ -190,7 +193,7 @@ import { Photo, Album } from '../../models/photo.model';
     .no-user {
       text-align: center;
       padding: 60px 20px;
-      color: #666;
+      color: var(--text-secondary);
     }
   `]
 })

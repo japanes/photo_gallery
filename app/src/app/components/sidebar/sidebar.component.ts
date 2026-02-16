@@ -67,8 +67,8 @@ import { Album } from '../../models/photo.model';
   styles: [`
     .sidebar {
       width: 260px;
-      background: #f8f9fa;
-      border-right: 1px solid #e0e0e0;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
       padding: 16px;
       overflow-y: auto;
       /* BUG: Fixed height causes content cut-off on small screens */
@@ -80,7 +80,7 @@ import { Album } from '../../models/photo.model';
     .sidebar-section h3 {
       font-size: 14px;
       text-transform: uppercase;
-      color: #666;
+      color: var(--text-secondary);
       margin: 0 0 12px 0;
       letter-spacing: 0.5px;
     }
@@ -99,7 +99,7 @@ import { Album } from '../../models/photo.model';
       font-size: 14px;
     }
     .album-list li:hover {
-      background: #e9ecef;
+      background: var(--hover-bg);
     }
     .album-list li.active {
       background: #3498db;
@@ -115,15 +115,15 @@ import { Album } from '../../models/photo.model';
       width: 100%;
       padding: 8px;
       margin-top: 8px;
-      border: 1px dashed #ccc;
+      border: 1px dashed var(--border-dashed);
       border-radius: 6px;
       background: transparent;
-      color: #666;
+      color: var(--text-secondary);
       cursor: pointer;
       font-size: 13px;
     }
     .btn-create:hover {
-      background: #e9ecef;
+      background: var(--hover-bg);
     }
     .tag-cloud {
       display: flex;
@@ -132,10 +132,11 @@ import { Album } from '../../models/photo.model';
     }
     .tag {
       padding: 4px 10px;
-      background: #e9ecef;
+      background: var(--bg-tertiary);
       border-radius: 14px;
       font-size: 12px;
       cursor: pointer;
+      color: var(--text-primary);
     }
     .tag.active {
       background: #3498db;
@@ -149,20 +150,20 @@ import { Album } from '../../models/photo.model';
     .stat {
       text-align: center;
       padding: 8px;
-      background: white;
+      background: var(--bg-primary);
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-color);
     }
     .stat-value {
       display: block;
       font-size: 18px;
       font-weight: bold;
-      color: #2c3e50;
+      color: var(--text-heading);
     }
     .stat-label {
       display: block;
       font-size: 11px;
-      color: #999;
+      color: var(--text-tertiary);
       margin-top: 2px;
     }
   `]

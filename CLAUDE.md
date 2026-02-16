@@ -3,9 +3,14 @@
 
 ## Project Overview
 
-Photo gallery Angular app featuring: grid view, search, sort, pagination, upload, albums, mock auth, profile, and dark mode.
+A photo gallery application with the following features:
 
-The codebase intentionally contains numerous issues for assessment purposes — the goal is to analyze, refactor, fix, and test the application.
+- **Photo gallery** with grid view, search, sort, and pagination
+- **Photo upload** with preview
+- **Album management** via sidebar
+- **User authentication** (mock)
+- **User profile** page
+- **Dark mode** toggle
 
 Source code is in the `app/` subdirectory.
 

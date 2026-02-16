@@ -106,9 +106,11 @@ import { Photo } from '../../models/photo.model';
     }
     .search-input {
       padding: 8px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       font-size: 14px;
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
     .photo-grid {
       display: grid;
@@ -126,7 +128,7 @@ import { Photo } from '../../models/photo.model';
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid #f3f3f3;
+      border: 4px solid var(--border-color);
       border-top: 4px solid #3498db;
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -139,7 +141,7 @@ import { Photo } from '../../models/photo.model';
       color: #e74c3c;
       padding: 20px;
       text-align: center;
-      background: #ffeaea;
+      background: var(--error-bg);
       border-radius: 8px;
     }
     .pagination {
@@ -152,10 +154,11 @@ import { Photo } from '../../models/photo.model';
     }
     .pagination button {
       padding: 8px 16px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       cursor: pointer;
-      background: #fff;
+      background: var(--bg-primary);
+      color: var(--text-primary);
     }
     .pagination button:disabled {
       opacity: 0.5;
@@ -174,8 +177,10 @@ import { Photo } from '../../models/photo.model';
     }
     select {
       padding: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
   `]
 })

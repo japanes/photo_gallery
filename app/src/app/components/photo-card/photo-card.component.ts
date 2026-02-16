@@ -46,16 +46,16 @@ import { Photo } from '../../models/photo.model';
   `,
   styles: [`
     .photo-card {
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       overflow: hidden;
       transition: transform 0.2s, box-shadow 0.2s;
       cursor: pointer;
-      background: #fff;
+      background: var(--bg-primary);
     }
     .photo-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px var(--card-shadow);
     }
     .photo-image {
       width: 100%;
@@ -73,14 +73,14 @@ import { Photo } from '../../models/photo.model';
     }
     .photo-description {
       font-size: 12px;
-      color: #666;
+      color: var(--text-secondary);
       margin: 0 0 8px 0;
     }
     .photo-meta {
       display: flex;
       justify-content: space-between;
       font-size: 12px;
-      color: #999;
+      color: var(--text-tertiary);
       margin-bottom: 8px;
     }
     .likes {
@@ -93,19 +93,19 @@ import { Photo } from '../../models/photo.model';
     .photo-actions button {
       flex: 1;
       padding: 6px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
     }
     .btn-like {
-      background: #fff;
-      color: #e74c3c;
+      color: #e74c3c !important;
       border-color: #e74c3c !important;
     }
     .btn-delete {
-      background: #fff;
-      color: #e74c3c;
+      color: #e74c3c !important;
     }
     .photo-tags {
       padding: 0 12px 12px;
@@ -114,11 +114,11 @@ import { Photo } from '../../models/photo.model';
       gap: 4px;
     }
     .tag {
-      background: #f0f0f0;
+      background: var(--tag-bg);
       padding: 2px 8px;
       border-radius: 12px;
       font-size: 11px;
-      color: #666;
+      color: var(--text-secondary);
     }
   `]
 })
