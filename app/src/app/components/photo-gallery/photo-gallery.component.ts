@@ -5,6 +5,7 @@ import { NotificationService } from '../../services/notification.service';
 import { PhotoCardComponent } from '../photo-card/photo-card.component';
 import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component';
 import { Photo } from '../../models/photo.model';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-photo-gallery',
@@ -283,8 +284,8 @@ export class PhotoGalleryComponent {
   }
 
   onPhotoSelected(photo: Photo) {
-    // BUG: No navigation to detail view, just logs
-    console.log('Selected photo:', photo);
+    // BUG: No navigation to detail view
+    if (environment.debug) { console.log('Selected photo:', photo); }
   }
 
   onPhotoUploaded(photo: Photo) {

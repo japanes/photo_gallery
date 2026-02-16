@@ -1,9 +1,11 @@
 import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
+import { ThemeService } from './services/theme.service';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { Album } from './models/photo.model';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-root',
@@ -11,11 +13,11 @@ import { Album } from './models/photo.model';
   imports: [RouterOutlet, HeaderComponent, SidebarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="app-container" [class.dark-mode]="isDarkMode()">
+    <div class="app-container" [class.dark-mode]="themeService.isDarkMode()">
       <app-header
         [user]="authService.currentUser()"
         (toggleSidebar)="toggleSidebar()"
-        (toggleDarkMode)="toggleDarkMode()">
+        (toggleDarkMode)="themeService.toggleDarkMode()">
       </app-header>
 
       <div class="app-body">
@@ -60,9 +62,9 @@ import { Album } from './models/photo.model';
 })
 export class AppComponent {
   readonly authService = inject(AuthService);
+  readonly themeService = inject(ThemeService);
 
   showSidebar = signal(true);
-  isDarkMode = signal(false);
   albums = signal<Album[]>([]);
 
   toggleSidebar() {
@@ -70,12 +72,8 @@ export class AppComponent {
   }
 
   onAlbumSelected(albumId: number) {
-    console.log('Album selected:', albumId); // BUG: Console.log left in code
+    if (environment.debug) { console.log('Album selected:', albumId); }
     // BUG: No actual navigation or filtering logic
   }
 
-  toggleDarkMode() {
-    this.isDarkMode.update(v => !v);
-    // BUG: Preference not persisted
-  }
 }

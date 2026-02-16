@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../models/photo.model';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-header',
@@ -127,7 +128,7 @@ export class HeaderComponent {
 
   onGlobalSearch() {
     // BUG: No actual search implementation
-    console.log('Global search:', this.globalSearchQuery);
+    if (environment.debug) { console.log('Global search:', this.globalSearchQuery); }
   }
 
   onLogin() {

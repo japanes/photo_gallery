@@ -1,6 +1,7 @@
 import { Component, input, output, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { PhotoService } from '../../services/photo.service';
 import { Album } from '../../models/photo.model';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-sidebar',
@@ -195,7 +196,7 @@ export class SidebarComponent {
   }
 
   createAlbum() {
-    // BUG: Not implemented, just logs
-    console.log('Create album - not implemented');
+    // BUG: Not implemented
+    if (environment.debug) { console.log('Create album - not implemented'); }
   }
 }

@@ -12,6 +12,8 @@ A photo gallery application with the following features:
 - **User profile** page
 - **Dark mode** toggle
 
+The codebase intentionally contains numerous issues for assessment purposes — the goal is to analyze, refactor, fix, and test the application.
+
 Source code is in the `app/` subdirectory.
 
 ## Tech Stack

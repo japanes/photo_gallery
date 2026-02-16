@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
 import { Photo, Album } from '../../models/photo.model';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-user-profile',
@@ -235,8 +236,8 @@ export class UserProfileComponent implements OnInit {
   }
 
   saveProfile() {
-    // BUG: Not implemented, just logs
-    console.log('Save profile - not implemented');
+    // BUG: Not implemented
+    if (environment.debug) { console.log('Save profile - not implemented'); }
     // BUG: Should make HTTP call and update on success
   }
 }
