@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ng serve)",
+      "Bash(docker compose up -d)",
+      "Bash(docker compose down)"
+    ]
+  }
+}
