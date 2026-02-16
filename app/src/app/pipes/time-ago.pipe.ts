@@ -7,7 +7,7 @@ import { Pipe, PipeTransform } from '@angular/core';
   pure: false // BUG: Impure pipe causes performance issues
 })
 export class TimeAgoPipe implements PipeTransform {
-  transform(value: any): string {
+  transform(value: string | Date): string {
     if (!value) return '';
 
     // BUG: No timezone handling

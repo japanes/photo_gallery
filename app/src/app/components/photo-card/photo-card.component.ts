@@ -1,5 +1,6 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { TruncatePipe } from '../../pipes/truncate.pipe';
+import { Photo } from '../../models/photo.model';
 
 @Component({
   selector: 'app-photo-card',
@@ -122,11 +123,11 @@ import { TruncatePipe } from '../../pipes/truncate.pipe';
   `]
 })
 export class PhotoCardComponent {
-  photo = input<any>();
+  photo = input.required<Photo>();
 
-  liked = output<any>();
-  deleted = output<any>();
-  selected = output<any>();
+  liked = output<number>();
+  deleted = output<number>();
+  selected = output<Photo>();
 
   onSelect() {
     this.selected.emit(this.photo());

@@ -7,7 +7,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 export class FileSizePipe implements PipeTransform {
   // BUG: Using 1000 instead of 1024 for binary file sizes
   // BUG: No handling for negative numbers or NaN
-  transform(bytes: any, decimals: number = 2): string {
+  transform(bytes: number, decimals: number = 2): string {
     if (bytes === 0) return '0 Bytes';
 
     const k = 1000; // BUG: Should be 1024 for binary

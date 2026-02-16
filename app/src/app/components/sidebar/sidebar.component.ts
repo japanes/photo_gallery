@@ -1,5 +1,6 @@
 import { Component, input, output, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { PhotoService } from '../../services/photo.service';
+import { Album } from '../../models/photo.model';
 
 @Component({
   selector: 'app-sidebar',
@@ -169,10 +170,10 @@ import { PhotoService } from '../../services/photo.service';
 export class SidebarComponent {
   private photoService = inject(PhotoService);
 
-  albums = input<any[]>([]);
-  albumSelected = output<any>();
+  albums = input<Album[]>([]);
+  albumSelected = output<number>();
 
-  selectedAlbumId = signal<any>(null);
+  selectedAlbumId = signal<number | null>(null);
   selectedTags = signal<string[]>([]);
 
   // BUG: Hardcoded tags
@@ -183,7 +184,7 @@ export class SidebarComponent {
   totalLikes = computed(() => this.photoService.totalLikes());
   totalAlbums = computed(() => this.albums().length);
 
-  selectAlbum(album: any) {
+  selectAlbum(album: Album) {
     this.selectedAlbumId.set(album.id);
     this.albumSelected.emit(album.id);
   }

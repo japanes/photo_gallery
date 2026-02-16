@@ -4,6 +4,7 @@ import { PhotoService } from '../../services/photo.service';
 import { NotificationService } from '../../services/notification.service';
 import { PhotoCardComponent } from '../photo-card/photo-card.component';
 import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component';
+import { Photo } from '../../models/photo.model';
 
 @Component({
   selector: 'app-photo-gallery',
@@ -201,7 +202,7 @@ export class PhotoGalleryComponent {
     // Filter by search query
     if (query) {
       const lowerQuery = query.toLowerCase();
-      result = result.filter((p: any) =>
+      result = result.filter((p: Photo) =>
         p.title.toLowerCase().includes(lowerQuery)
       );
     }
@@ -209,13 +210,13 @@ export class PhotoGalleryComponent {
     // Sort
     switch (this.sortBy()) {
       case 'date':
-        result.sort((a: any, b: any) => b.uploadedAt - a.uploadedAt);
+        result.sort((a: Photo, b: Photo) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
         break;
       case 'title':
-        result.sort((a: any, b: any) => a.title.localeCompare(b.title));
+        result.sort((a: Photo, b: Photo) => a.title.localeCompare(b.title));
         break;
       case 'likes':
-        result.sort((a: any, b: any) => b.likes - a.likes);
+        result.sort((a: Photo, b: Photo) => b.likes - a.likes);
         break;
     }
 
@@ -259,22 +260,22 @@ export class PhotoGalleryComponent {
     }
   }
 
-  onPhotoLiked(photoId: any) {
+  onPhotoLiked(photoId: number) {
     this.photoService.likePhoto(photoId);
   }
 
-  onPhotoDeleted(photoId: any) {
+  onPhotoDeleted(photoId: number) {
     // BUG: No confirmation dialog before deletion
     this.photoService.deletePhoto(photoId);
     this.notificationService.show('Photo deleted', 'success', 3000);
   }
 
-  onPhotoSelected(photo: any) {
+  onPhotoSelected(photo: Photo) {
     // BUG: No navigation to detail view, just logs
     console.log('Selected photo:', photo);
   }
 
-  onPhotoUploaded(photo: any) {
+  onPhotoUploaded(photo: Photo) {
     this.showUploadDialog.set(false);
     this.notificationService.show('Photo uploaded successfully!', 'success', 3000);
     this.photoService.getPhotos(); // BUG: Reloads all photos instead of adding to existing list

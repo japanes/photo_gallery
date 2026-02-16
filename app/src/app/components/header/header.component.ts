@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { User } from '../../models/photo.model';
 
 @Component({
   selector: 'app-header',
@@ -119,7 +120,7 @@ export class HeaderComponent {
   readonly authService = inject(AuthService);
   private router = inject(Router);
 
-  user = input<any>();
+  user = input<User | null>();
   toggleSidebar = output<void>();
   toggleDarkMode = output<void>();
 
@@ -141,8 +142,8 @@ export class HeaderComponent {
     this.router.navigate(['/']);
   }
 
-  onAvatarError(event: any) {
+  onAvatarError(event: Event) {
     // BUG: Direct DOM manipulation
-    event.target.src = 'assets/default-avatar.png';
+    (event.target as HTMLImageElement).src = 'assets/default-avatar.png';
   }
 }

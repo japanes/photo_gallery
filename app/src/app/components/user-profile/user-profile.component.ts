@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
+import { Photo, Album } from '../../models/photo.model';
 
 @Component({
   selector: 'app-user-profile',
@@ -202,8 +203,8 @@ export class UserProfileComponent implements OnInit {
   // Read user from auth service signal
   readonly user = this.authService.currentUser;
 
-  userPhotos = signal<any[]>([]);
-  userAlbums = signal<any[]>([]);
+  userPhotos = signal<Photo[]>([]);
+  userAlbums = signal<Album[]>([]);
 
   // Editable form signals (not bound directly to auth state)
   editName = signal('');
@@ -211,7 +212,7 @@ export class UserProfileComponent implements OnInit {
 
   // Computed total likes — no longer recalculated every change detection cycle
   totalLikes = computed(() =>
-    this.userPhotos().reduce((sum: number, p: any) => sum + (p.likes || 0), 0)
+    this.userPhotos().reduce((sum: number, p: Photo) => sum + (p.likes || 0), 0)
   );
 
   ngOnInit() {
@@ -223,7 +224,7 @@ export class UserProfileComponent implements OnInit {
       this.photoService.getPhotosByAlbum(currentUser.id).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
-        next: (photos: any) => {
+        next: (photos: Photo[]) => {
           this.userPhotos.set(photos);
         }
       });

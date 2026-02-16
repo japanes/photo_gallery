@@ -1,7 +1,9 @@
 import { Component, output, signal, inject, OnInit, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
+import { Photo, Album } from '../../models/photo.model';
 
 @Component({
   selector: 'app-upload-dialog',
@@ -196,13 +198,13 @@ export class UploadDialogComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   closed = output<void>();
-  uploaded = output<any>();
+  uploaded = output<Photo>();
 
   uploadForm: FormGroup;
-  selectedFile = signal<any>(null);
-  previewUrl = signal<any>(null);
+  selectedFile = signal<File | null>(null);
+  previewUrl = signal<string | null>(null);
   uploading = signal(false);
-  albums = signal<any[]>([]);
+  albums = signal<Album[]>([]);
 
   constructor() {
     this.uploadForm = this.fb.group({
@@ -218,12 +220,13 @@ export class UploadDialogComponent implements OnInit {
     this.photoService.getAlbums().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (albums: any) => this.albums.set(albums)
+      next: (albums: Album[]) => this.albums.set(albums)
     });
   }
 
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
 
     // BUG: No file size validation
     // BUG: No file type validation beyond accept attribute
@@ -233,8 +236,8 @@ export class UploadDialogComponent implements OnInit {
 
       // BUG: FileReader not cleaned up, potential memory leak
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.previewUrl.set(e.target.result);
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        this.previewUrl.set(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -256,14 +259,14 @@ export class UploadDialogComponent implements OnInit {
     };
 
     // BUG: No error handling, no progress tracking
-    this.photoService.uploadPhoto(this.selectedFile(), formValue.albumId, metadata)
+    this.photoService.uploadPhoto(this.selectedFile()!, formValue.albumId, metadata)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result: any) => {
+        next: (result: Photo) => {
           this.uploading.set(false);
           this.uploaded.emit(result);
         },
-        error: (error: any) => {
+        error: (error: HttpErrorResponse) => {
           this.uploading.set(false);
           console.error('Upload failed:', error);
           // BUG: No user-visible error notification

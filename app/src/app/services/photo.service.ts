@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Photo } from '../models/photo.model';
+import { Photo, Album, UploadProgress, createPhoto } from '../models/photo.model';
 
 @Injectable({ providedIn: 'root' })
 export class PhotoService {
@@ -11,11 +11,11 @@ export class PhotoService {
   private destroyRef = inject(DestroyRef);
 
   // Private mutable signals
-  private _photos = signal<any[]>([]);
-  private _selectedPhoto = signal<any>(null);
-  private _uploadProgress = signal<any>(null);
+  private _photos = signal<Photo[]>([]);
+  private _selectedPhoto = signal<Photo | null>(null);
+  private _uploadProgress = signal<UploadProgress | null>(null);
   private _loading = signal(false);
-  private _error = signal<any>(null);
+  private _error = signal<string | null>(null);
 
   // Public readonly signals
   readonly photos = this._photos.asReadonly();
@@ -34,32 +34,32 @@ export class PhotoService {
   private apiUrl = 'https://jsonplaceholder.typicode.com';
 
   // BUG: No error handling, returns any, no typing
-  getPhotos(albumId?: any) {
+  getPhotos(albumId?: number): void {
     this._loading.set(true);
     let url = `${this.apiUrl}/photos`;
     if (albumId) {
       url += `?albumId=${albumId}`;
     }
 
-    this.http.get(url).pipe(
+    this.http.get<Photo[]>(url).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (data: any) => {
-        this._photos.set(data.map((item: any) => new Photo(item)));
+      next: (data: Photo[]) => {
+        this._photos.set(data.map((item: Photo) => createPhoto(item)));
         this._loading.set(false);
       },
-      error: (err: any) => {
-        this._error.set(err);
+      error: (err: { message: string }) => {
+        this._error.set(err.message);
         this._loading.set(false);
       }
     });
   }
 
   // BUG: No return type, mutates internal state directly
-  getPhotoById(id: any) {
-    return this.http.get(`${this.apiUrl}/photos/${id}`).pipe(
-      map((data: any) => {
-        const photo = new Photo(data);
+  getPhotoById(id: number): Observable<Photo> {
+    return this.http.get<Photo>(`${this.apiUrl}/photos/${id}`).pipe(
+      map((data: Photo) => {
+        const photo = createPhoto(data);
         this._selectedPhoto.set(photo);
         return photo;
       })
@@ -67,47 +67,47 @@ export class PhotoService {
   }
 
   // BUG: No validation, no progress tracking, fake implementation
-  uploadPhoto(file: any, albumId: any, metadata: any): Observable<any> {
+  uploadPhoto(file: File, albumId: number, metadata: Record<string, unknown>): Observable<Photo> {
     // BUG: Building FormData incorrectly, no file type validation
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('albumId', albumId);
-    formData.append('metadata', metadata); // BUG: Should be JSON.stringify
+    formData.append('albumId', String(albumId));
+    formData.append('metadata', JSON.stringify(metadata)); // BUG: Should be JSON.stringify
 
-    return this.http.post(`${this.apiUrl}/photos`, formData);
+    return this.http.post<Photo>(`${this.apiUrl}/photos`, formData);
   }
 
   // BUG: Mutates array directly instead of creating new reference
-  deletePhoto(id: any) {
+  deletePhoto(id: number): void {
     this.http.delete(`${this.apiUrl}/photos/${id}`).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        this._photos.update(current => current.filter((p: any) => p.id !== id));
+        this._photos.update(current => current.filter((p: Photo) => p.id !== id));
       }
     });
   }
 
   // BUG: No debounce, no minimum query length, hits API on every keystroke
-  searchPhotos(query: any) {
-    return this.http.get(`${this.apiUrl}/photos?title_like=${query}`);
+  searchPhotos(query: string): Observable<Photo[]> {
+    return this.http.get<Photo[]>(`${this.apiUrl}/photos?title_like=${query}`);
   }
 
   // Immutable update via _photos.update() + spread
-  likePhoto(id: any) {
+  likePhoto(id: number): void {
     this._photos.update(current =>
-      current.map((p: any) =>
+      current.map((p: Photo) =>
         p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p
       )
     );
   }
 
-  getAlbums(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/albums`);
+  getAlbums(): Observable<Album[]> {
+    return this.http.get<Album[]>(`${this.apiUrl}/albums`);
   }
 
   // BUG: No pagination support
-  getPhotosByAlbum(albumId: any): Observable<any> {
-    return this.http.get(`${this.apiUrl}/albums/${albumId}/photos`);
+  getPhotosByAlbum(albumId: number): Observable<Photo[]> {
+    return this.http.get<Photo[]>(`${this.apiUrl}/albums/${albumId}/photos`);
   }
 }

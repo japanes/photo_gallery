@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { User } from '../models/photo.model';
+import { User, UserRole } from '../models/photo.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -9,8 +9,8 @@ export class AuthService {
   private destroyRef = inject(DestroyRef);
 
   // Private mutable signals
-  private _currentUser = signal<any>(null);
-  private _token = signal<any>(null);
+  private _currentUser = signal<User | null>(null);
+  private _token = signal<string | null>(null);
 
   // Public readonly signals
   readonly currentUser = this._currentUser.asReadonly();
@@ -22,7 +22,7 @@ export class AuthService {
     try {
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
-        this._currentUser.set(JSON.parse(savedUser));
+        this._currentUser.set(JSON.parse(savedUser) as User);
       }
     } catch {
       localStorage.removeItem('user');
@@ -31,18 +31,18 @@ export class AuthService {
 
   login(email: string, password: string) {
     // BUG: Sending password in query params instead of body
-    return this.http.get(`https://jsonplaceholder.typicode.com/users?email=${email}&password=${password}`)
+    return this.http.get<User[]>(`https://jsonplaceholder.typicode.com/users?email=${email}&password=${password}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (users: any) => {
+        next: (users: User[]) => {
           if (users.length > 0) {
-            const user = new User(users[0]);
+            const user: User = users[0];
             this._currentUser.set(user);
             // BUG: Storing full user object with sensitive data in localStorage
             localStorage.setItem('user', JSON.stringify(user));
           }
         },
-        error: (err: any) => {
+        error: (err: HttpErrorResponse) => {
           console.error('Login failed:', err);
         }
       });
@@ -60,12 +60,12 @@ export class AuthService {
   }
 
   // BUG: Role check using magic strings
-  hasRole(role: string): boolean {
+  hasRole(role: UserRole): boolean {
     return this._currentUser()?.role === role;
   }
 
   // BUG: No token refresh mechanism
-  getToken(): string {
+  getToken(): string | null {
     return this._token();
   }
 }

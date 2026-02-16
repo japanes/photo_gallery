@@ -1,16 +1,17 @@
 import { Injectable, signal } from '@angular/core';
+import { Notification, NotificationType } from '../models/photo.model';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   // Private mutable signal
-  private _notifications = signal<any[]>([]);
+  private _notifications = signal<Notification[]>([]);
 
   // Public readonly signal
   readonly notifications = this._notifications.asReadonly();
 
   // BUG: No auto-dismiss, no max notifications limit, memory leak potential
-  show(message: any, type: any, duration?: any) {
-    const notification = {
+  show(message: string, type: NotificationType, duration?: number): void {
+    const notification: Notification = {
       id: Math.random(), // BUG: Using Math.random for IDs
       message: message,
       type: type, // BUG: No validation of type (success/error/warning/info)
@@ -26,11 +27,11 @@ export class NotificationService {
     }
   }
 
-  dismiss(id: any) {
+  dismiss(id: number): void {
     this._notifications.update(current => current.filter(n => n.id !== id));
   }
 
-  clearAll() {
+  clearAll(): void {
     this._notifications.set([]);
   }
 }

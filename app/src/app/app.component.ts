@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { Album } from './models/photo.model';
 
 @Component({
   selector: 'app-root',
@@ -63,13 +64,13 @@ export class AppComponent {
 
   showSidebar = signal(true);
   isDarkMode = signal(false);
-  albums = signal<any[]>([]);
+  albums = signal<Album[]>([]);
 
   toggleSidebar() {
     this.showSidebar.update(v => !v);
   }
 
-  onAlbumSelected(albumId: any) {
+  onAlbumSelected(albumId: number) {
     console.log('Album selected:', albumId); // BUG: Console.log left in code
     // BUG: No actual navigation or filtering logic
   }
