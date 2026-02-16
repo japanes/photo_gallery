@@ -1,4 +1,4 @@
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
@@ -153,6 +153,7 @@ export class PhotoDetailComponent {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private photoService = inject(PhotoService);
+  private destroyRef = inject(DestroyRef);
 
   photo = signal<Photo | null>(null);
   loading = signal(true);
@@ -185,7 +186,9 @@ export class PhotoDetailComponent {
 
     // Otherwise fetch from API
     this.loading.set(true);
-    this.photoService.getPhotoById(id).subscribe({
+    this.photoService.getPhotoById(id).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (photo) => {
         this.photo.set(photo);
         this.loading.set(false);
