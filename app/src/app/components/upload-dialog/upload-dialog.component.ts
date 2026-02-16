@@ -1,13 +1,13 @@
-import { Component, Output, EventEmitter, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, output, signal, inject, OnInit, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
 
-// PROBLEM: No proper dialog/modal implementation (no backdrop, no escape key, no focus trap)
 @Component({
   selector: 'app-upload-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- BUG: No backdrop click to close, no escape key handler -->
     <!-- BUG: No focus trap for accessibility -->
@@ -28,9 +28,11 @@ import { PhotoService } from '../../services/photo.service';
               (change)="onFileSelected($event)"
               accept="image/*">
             <!-- BUG: Error message shown incorrectly -->
-            <div class="error" *ngIf="uploadForm.get('file').invalid">
-              Please select a file
-            </div>
+            @if (uploadForm.get('file')?.invalid) {
+              <div class="error">
+                Please select a file
+              </div>
+            }
           </div>
 
           <div class="form-group">
@@ -39,9 +41,11 @@ import { PhotoService } from '../../services/photo.service';
               type="text"
               formControlName="title"
               placeholder="Enter photo title">
-            <div class="error" *ngIf="uploadForm.get('title').invalid && uploadForm.get('title').touched">
-              Title is required (3-100 characters)
-            </div>
+            @if (uploadForm.get('title')?.invalid && uploadForm.get('title')?.touched) {
+              <div class="error">
+                Title is required (3-100 characters)
+              </div>
+            }
           </div>
 
           <div class="form-group">
@@ -49,9 +53,11 @@ import { PhotoService } from '../../services/photo.service';
             <!-- BUG: Albums not loaded, empty select -->
             <select formControlName="albumId">
               <option value="">Select album</option>
-              <option *ngFor="let album of albums" [value]="album.id">
-                {{ album.name }}
-              </option>
+              @for (album of albums(); track album.id) {
+                <option [value]="album.id">
+                  {{ album.name }}
+                </option>
+              }
             </select>
           </div>
 
@@ -75,17 +81,19 @@ import { PhotoService } from '../../services/photo.service';
             <button type="button" (click)="close()">Cancel</button>
             <button
               type="submit"
-              [disabled]="uploadForm.invalid || uploading"
+              [disabled]="uploadForm.invalid || uploading()"
               class="btn-submit">
-              {{ uploading ? 'Uploading...' : 'Upload' }}
+              {{ uploading() ? 'Uploading...' : 'Upload' }}
             </button>
           </div>
         </form>
 
         <!-- BUG: Preview shown even when no file selected -->
-        <div class="preview" *ngIf="previewUrl">
-          <img [src]="previewUrl" alt="Preview">
-        </div>
+        @if (previewUrl()) {
+          <div class="preview">
+            <img [src]="previewUrl()" alt="Preview">
+          </div>
+        }
       </div>
     </div>
   `,
@@ -183,20 +191,20 @@ import { PhotoService } from '../../services/photo.service';
   `]
 })
 export class UploadDialogComponent implements OnInit {
-  @Output() closed = new EventEmitter<void>();
-  @Output() uploaded = new EventEmitter<any>();
+  private fb = inject(FormBuilder);
+  private photoService = inject(PhotoService);
+  private destroyRef = inject(DestroyRef);
+
+  closed = output<void>();
+  uploaded = output<any>();
 
   uploadForm: FormGroup;
-  selectedFile: any = null;
-  previewUrl: any = null;
-  uploading = false;
-  albums: any[] = [];
+  selectedFile = signal<any>(null);
+  previewUrl = signal<any>(null);
+  uploading = signal(false);
+  albums = signal<any[]>([]);
 
-  // PROBLEM: Using constructor injection instead of inject()
-  constructor(
-    private fb: FormBuilder,
-    private photoService: PhotoService
-  ) {
+  constructor() {
     this.uploadForm = this.fb.group({
       title: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100)]],
       albumId: [''],
@@ -207,9 +215,11 @@ export class UploadDialogComponent implements OnInit {
   }
 
   ngOnInit() {
-    // BUG: Albums never loaded because getAlbums() result is not subscribed properly
-    this.photoService.getAlbums();
-    // Should be: this.photoService.getAlbums().subscribe(albums => this.albums = albums);
+    this.photoService.getAlbums().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (albums: any) => this.albums.set(albums)
+    });
   }
 
   onFileSelected(event: any) {
@@ -218,24 +228,24 @@ export class UploadDialogComponent implements OnInit {
     // BUG: No file size validation
     // BUG: No file type validation beyond accept attribute
     if (file) {
-      this.selectedFile = file;
+      this.selectedFile.set(file);
       this.uploadForm.patchValue({ file: file });
 
       // BUG: FileReader not cleaned up, potential memory leak
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        this.previewUrl = e.target.result;
+        this.previewUrl.set(e.target.result);
       };
       reader.readAsDataURL(file);
     }
   }
 
   onSubmit() {
-    if (this.uploadForm.invalid || !this.selectedFile) {
+    if (this.uploadForm.invalid || !this.selectedFile()) {
       return;
     }
 
-    this.uploading = true;
+    this.uploading.set(true);
 
     const formValue = this.uploadForm.value;
     // BUG: Tags not properly parsed from comma-separated string
@@ -246,19 +256,19 @@ export class UploadDialogComponent implements OnInit {
     };
 
     // BUG: No error handling, no progress tracking
-    this.photoService.uploadPhoto(this.selectedFile, formValue.albumId, metadata)
-      .subscribe(
-        (result: any) => {
-          this.uploading = false;
+    this.photoService.uploadPhoto(this.selectedFile(), formValue.albumId, metadata)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result: any) => {
+          this.uploading.set(false);
           this.uploaded.emit(result);
         },
-        // BUG: Using deprecated error callback syntax
-        (error: any) => {
-          this.uploading = false;
+        error: (error: any) => {
+          this.uploading.set(false);
           console.error('Upload failed:', error);
           // BUG: No user-visible error notification
         }
-      );
+      });
   }
 
   close() {

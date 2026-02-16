@@ -1,11 +1,12 @@
-import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Injectable, signal } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  // BUG: Using any[], no notification type/interface
-  private notifications: any[] = [];
-  public notifications$ = new Subject<any>();
+  // Private mutable signal
+  private _notifications = signal<any[]>([]);
+
+  // Public readonly signal
+  readonly notifications = this._notifications.asReadonly();
 
   // BUG: No auto-dismiss, no max notifications limit, memory leak potential
   show(message: any, type: any, duration?: any) {
@@ -15,8 +16,7 @@ export class NotificationService {
       type: type, // BUG: No validation of type (success/error/warning/info)
       timestamp: new Date()
     };
-    this.notifications.push(notification);
-    this.notifications$.next(this.notifications);
+    this._notifications.update(current => [...current, notification]);
 
     // BUG: setTimeout without cleanup on service destroy
     if (duration) {
@@ -27,13 +27,10 @@ export class NotificationService {
   }
 
   dismiss(id: any) {
-    // BUG: Using == instead of ===
-    this.notifications = this.notifications.filter(n => n.id != id);
-    this.notifications$.next(this.notifications);
+    this._notifications.update(current => current.filter(n => n.id !== id));
   }
 
-  // BUG: Clears array but doesn't notify subscribers
   clearAll() {
-    this.notifications = [];
+    this._notifications.set([]);
   }
 }

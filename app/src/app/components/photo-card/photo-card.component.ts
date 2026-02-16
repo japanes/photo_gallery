@@ -1,31 +1,29 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { TruncatePipe } from '../../pipes/truncate.pipe';
 
-// PROBLEM: No OnPush change detection
-// PROBLEM: No accessibility
 @Component({
   selector: 'app-photo-card',
   standalone: true,
-  imports: [CommonModule, TruncatePipe],
+  imports: [TruncatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="photo-card" (click)="onSelect()">
       <!-- BUG: No NgOptimizedImage, no lazy loading, no alt text derived from data -->
       <!-- BUG: No error handling for broken images -->
-      <img [src]="photo?.thumbnailUrl" alt="photo" class="photo-image">
+      <img [src]="photo()?.thumbnailUrl" alt="photo" class="photo-image">
 
       <div class="photo-info">
-        <h3 class="photo-title">{{ photo?.title }}</h3>
+        <h3 class="photo-title">{{ photo()?.title }}</h3>
 
         <!-- BUG: Pipe 'truncate' used but might not work correctly -->
-        <p class="photo-description">{{ photo?.title | truncate:50 }}</p>
+        <p class="photo-description">{{ photo()?.title | truncate:50 }}</p>
 
         <div class="photo-meta">
           <span class="likes" (click)="onLike($event)">
-            ❤️ {{ photo?.likes }}
+            ❤️ {{ photo()?.likes }}
           </span>
           <!-- BUG: No date formatting, raw date string shown -->
-          <span class="date">{{ photo?.uploadedAt }}</span>
+          <span class="date">{{ photo()?.uploadedAt }}</span>
         </div>
 
         <div class="photo-actions">
@@ -36,9 +34,13 @@ import { TruncatePipe } from '../../pipes/truncate.pipe';
       </div>
 
       <!-- BUG: Tags rendered without proper styling or click handling -->
-      <div class="photo-tags" *ngIf="photo?.tags?.length">
-        <span *ngFor="let tag of photo.tags" class="tag">{{ tag }}</span>
-      </div>
+      @if (photo()?.tags?.length) {
+        <div class="photo-tags">
+          @for (tag of photo().tags; track tag) {
+            <span class="tag">{{ tag }}</span>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -120,25 +122,24 @@ import { TruncatePipe } from '../../pipes/truncate.pipe';
   `]
 })
 export class PhotoCardComponent {
-  // BUG: No type safety, using any
-  @Input() photo: any;
+  photo = input<any>();
 
-  @Output() liked = new EventEmitter<any>();
-  @Output() deleted = new EventEmitter<any>();
-  @Output() selected = new EventEmitter<any>();
+  liked = output<any>();
+  deleted = output<any>();
+  selected = output<any>();
 
   onSelect() {
-    this.selected.emit(this.photo);
+    this.selected.emit(this.photo());
   }
 
   onLike(event: Event) {
     event.stopPropagation();
-    this.liked.emit(this.photo.id);
+    this.liked.emit(this.photo().id);
   }
 
   onDelete(event: Event) {
     event.stopPropagation();
     // BUG: No confirmation before emitting delete
-    this.deleted.emit(this.photo.id);
+    this.deleted.emit(this.photo().id);
   }
 }

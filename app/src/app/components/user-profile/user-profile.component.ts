@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
 
@@ -9,69 +10,74 @@ import { PhotoService } from '../../services/photo.service';
   selector: 'app-user-profile',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="profile-container" *ngIf="user">
-      <div class="profile-header">
-        <!-- BUG: No NgOptimizedImage -->
-        <img [src]="user.avatarUrl" alt="avatar" class="profile-avatar">
-        <div class="profile-info">
-          <h2>{{ user.name }}</h2>
-          <p>{{ user.email }}</p>
-          <!-- BUG: Role displayed using magic string comparison -->
-          <span class="role-badge" [class.admin]="user.role === 'admin'">
-            {{ user.role }}
-          </span>
-        </div>
-      </div>
-
-      <div class="profile-stats">
-        <div class="stat-card">
-          <h3>{{ userPhotos.length }}</h3>
-          <p>Photos</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ userAlbums.length }}</h3>
-          <p>Albums</p>
-        </div>
-        <div class="stat-card">
-          <!-- BUG: Computed value recalculated on every change detection cycle -->
-          <h3>{{ getTotalLikes() }}</h3>
-          <p>Total Likes</p>
-        </div>
-      </div>
-
-      <div class="profile-section">
-        <h3>Recent Photos</h3>
-        <!-- BUG: No trackBy, no lazy loading, shows ALL photos -->
-        <div class="photo-grid">
-          <div *ngFor="let photo of userPhotos" class="photo-thumb">
-            <img [src]="photo.thumbnailUrl" alt="photo">
+    @if (user()) {
+      <div class="profile-container">
+        <div class="profile-header">
+          <!-- BUG: No NgOptimizedImage -->
+          <img [src]="user()!.avatarUrl" alt="avatar" class="profile-avatar">
+          <div class="profile-info">
+            <h2>{{ user()!.name }}</h2>
+            <p>{{ user()!.email }}</p>
+            <!-- BUG: Role displayed using magic string comparison -->
+            <span class="role-badge" [class.admin]="user()!.role === 'admin'">
+              {{ user()!.role }}
+            </span>
           </div>
         </div>
-      </div>
 
-      <div class="profile-section">
-        <h3>Settings</h3>
-        <!-- BUG: Form uses ngModel without FormsModule guarantee -->
-        <form>
-          <div class="form-group">
-            <label>Display Name</label>
-            <input type="text" [(ngModel)]="user.name" name="name">
+        <div class="profile-stats">
+          <div class="stat-card">
+            <h3>{{ userPhotos().length }}</h3>
+            <p>Photos</p>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" [(ngModel)]="user.email" name="email">
+          <div class="stat-card">
+            <h3>{{ userAlbums().length }}</h3>
+            <p>Albums</p>
           </div>
-          <!-- BUG: Save doesn't do anything -->
-          <button type="button" (click)="saveProfile()">Save Changes</button>
-        </form>
+          <div class="stat-card">
+            <h3>{{ totalLikes() }}</h3>
+            <p>Total Likes</p>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>Recent Photos</h3>
+          <!-- BUG: No lazy loading, shows ALL photos -->
+          <div class="photo-grid">
+            @for (photo of userPhotos(); track photo.id) {
+              <div class="photo-thumb">
+                <img [src]="photo.thumbnailUrl" alt="photo">
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>Settings</h3>
+          <form>
+            <div class="form-group">
+              <label>Display Name</label>
+              <input type="text" [ngModel]="editName()" (ngModelChange)="editName.set($event)" name="name">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" [ngModel]="editEmail()" (ngModelChange)="editEmail.set($event)" name="email">
+            </div>
+            <!-- BUG: Save doesn't do anything -->
+            <button type="button" (click)="saveProfile()">Save Changes</button>
+          </form>
+        </div>
       </div>
-    </div>
+    }
 
     <!-- BUG: No loading state, no "not found" state -->
-    <div *ngIf="!user" class="no-user">
-      Please log in to view your profile.
-    </div>
+    @if (!user()) {
+      <div class="no-user">
+        Please log in to view your profile.
+      </div>
+    }
   `,
   styles: [`
     .profile-container {
@@ -188,37 +194,45 @@ import { PhotoService } from '../../services/photo.service';
   `]
 })
 export class UserProfileComponent implements OnInit {
-  user: any = null;
-  userPhotos: any[] = [];
-  userAlbums: any[] = [];
+  private authService = inject(AuthService);
+  private photoService = inject(PhotoService);
+  private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
-  constructor(
-    private authService: AuthService,
-    private photoService: PhotoService,
-    private route: ActivatedRoute
-  ) {}
+  // Read user from auth service signal
+  readonly user = this.authService.currentUser;
+
+  userPhotos = signal<any[]>([]);
+  userAlbums = signal<any[]>([]);
+
+  // Editable form signals (not bound directly to auth state)
+  editName = signal('');
+  editEmail = signal('');
+
+  // Computed total likes — no longer recalculated every change detection cycle
+  totalLikes = computed(() =>
+    this.userPhotos().reduce((sum: number, p: any) => sum + (p.likes || 0), 0)
+  );
 
   ngOnInit() {
-    // BUG: Uses authService.currentUser directly instead of observable
-    this.user = this.authService.currentUser;
+    const currentUser = this.user();
+    if (currentUser) {
+      this.editName.set(currentUser.name || '');
+      this.editEmail.set(currentUser.email || '');
 
-    if (this.user) {
-      // BUG: No error handling, subscribes without cleanup
-      this.photoService.getPhotosByAlbum(this.user.id).subscribe((photos: any) => {
-        this.userPhotos = photos;
+      this.photoService.getPhotosByAlbum(currentUser.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (photos: any) => {
+          this.userPhotos.set(photos);
+        }
       });
     }
-  }
-
-  // BUG: Called on every change detection - should be a pipe or computed signal
-  getTotalLikes(): number {
-    return this.userPhotos.reduce((sum: number, p: any) => sum + (p.likes || 0), 0);
   }
 
   saveProfile() {
     // BUG: Not implemented, just logs
     console.log('Save profile - not implemented');
-    // BUG: Mutates user object directly which affects auth service state
-    // Should make HTTP call and update on success
+    // BUG: Should make HTTP call and update on success
   }
 }

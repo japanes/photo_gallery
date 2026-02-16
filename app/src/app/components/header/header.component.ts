@@ -1,14 +1,14 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
-// PROBLEM: No OnPush
 @Component({
   selector: 'app-header',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- BUG: No semantic HTML (should use <header>, <nav>) -->
     <div class="header">
@@ -28,20 +28,23 @@ import { AuthService } from '../../services/auth.service';
       </div>
 
       <div class="header-right">
-        <!-- BUG: Directly accessing service state in template -->
-        <div class="user-info" *ngIf="authService.isAuthenticated">
-          <!-- BUG: Using innerHTML - XSS vulnerability -->
-          <span [innerHTML]="user?.name"></span>
-          <img
-            [src]="user?.avatarUrl || 'assets/default-avatar.png'"
-            class="avatar"
-            (error)="onAvatarError($event)">
-          <button (click)="onLogout()">Logout</button>
-        </div>
+        @if (authService.isAuthenticated()) {
+          <div class="user-info">
+            <!-- BUG: Using innerHTML - XSS vulnerability -->
+            <span [innerHTML]="user()?.name"></span>
+            <img
+              [src]="user()?.avatarUrl || 'assets/default-avatar.png'"
+              class="avatar"
+              (error)="onAvatarError($event)">
+            <button (click)="onLogout()">Logout</button>
+          </div>
+        }
 
-        <div *ngIf="!authService.isAuthenticated">
-          <button (click)="onLogin()">Login</button>
-        </div>
+        @if (!authService.isAuthenticated()) {
+          <div>
+            <button (click)="onLogin()">Login</button>
+          </div>
+        }
 
         <button (click)="toggleDarkMode.emit()" class="btn-theme">
           🌙
@@ -113,17 +116,14 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class HeaderComponent {
-  @Input() user: any;
-  @Output() toggleSidebar = new EventEmitter<void>();
-  @Output() toggleDarkMode = new EventEmitter<void>();
+  readonly authService = inject(AuthService);
+  private router = inject(Router);
+
+  user = input<any>();
+  toggleSidebar = output<void>();
+  toggleDarkMode = output<void>();
 
   globalSearchQuery = '';
-
-  // PROBLEM: Injecting AuthService directly AND receiving user as Input - inconsistent
-  constructor(
-    public authService: AuthService,
-    private router: Router
-  ) {}
 
   onGlobalSearch() {
     // BUG: No actual search implementation

@@ -1,18 +1,15 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, computed, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
 import { PhotoService } from '../../services/photo.service';
 import { NotificationService } from '../../services/notification.service';
-import { Photo } from '../../models/photo.model';
 import { PhotoCardComponent } from '../photo-card/photo-card.component';
 import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component';
 
-// PROBLEM: Uses OnInit/OnDestroy lifecycle instead of modern patterns
 @Component({
   selector: 'app-photo-gallery',
   standalone: true,
-  imports: [CommonModule, FormsModule, PhotoCardComponent, UploadDialogComponent],
+  imports: [FormsModule, PhotoCardComponent, UploadDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="gallery-container">
       <div class="gallery-header">
@@ -21,62 +18,72 @@ import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component'
           <input
             type="text"
             placeholder="Search photos..."
-            [(ngModel)]="searchQuery"
-            (keyup)="onSearch($event)"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
             class="search-input">
-          <select [(ngModel)]="sortBy" (change)="onSortChange()">
+          <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
             <option value="date">Date</option>
             <option value="title">Title</option>
             <option value="likes">Likes</option>
           </select>
-          <button (click)="openUploadDialog()" class="btn-upload">
+          <button (click)="showUploadDialog.set(true)" class="btn-upload">
             Upload Photo
           </button>
         </div>
       </div>
 
       <!-- BUG: No loading skeleton, just a spinner -->
-      <div *ngIf="loading" class="loading">
-        <div class="spinner"></div>
-        Loading...
-      </div>
+      @if (loading()) {
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading...
+        </div>
+      }
 
       <!-- BUG: No empty state handling -->
-      <div *ngIf="error" class="error">
-        {{ error }}
-      </div>
+      @if (error()) {
+        <div class="error">
+          {{ error() }}
+        </div>
+      }
 
       <!-- BUG: No trackBy function, will re-render entire list on any change -->
-      <div class="photo-grid" *ngIf="!loading">
-        <app-photo-card
-          *ngFor="let photo of filteredPhotos"
-          [photo]="photo"
-          (liked)="onPhotoLiked($event)"
-          (deleted)="onPhotoDeleted($event)"
-          (selected)="onPhotoSelected($event)">
-        </app-photo-card>
-      </div>
+      @if (!loading()) {
+        <div class="photo-grid">
+          @for (photo of paginatedPhotos(); track photo.id) {
+            <app-photo-card
+              [photo]="photo"
+              (liked)="onPhotoLiked($event)"
+              (deleted)="onPhotoDeleted($event)"
+              (selected)="onPhotoSelected($event)">
+            </app-photo-card>
+          }
+        </div>
+      }
 
       <!-- BUG: Pagination is broken - always shows page 1 -->
-      <div class="pagination" *ngIf="filteredPhotos.length > 0">
-        <button
-          (click)="previousPage()"
-          [disabled]="currentPage === 1">
-          Previous
-        </button>
-        <span>Page {{ currentPage }} of {{ totalPages }}</span>
-        <button
-          (click)="nextPage()"
-          [disabled]="currentPage === totalPages">
-          Next
-        </button>
-      </div>
+      @if (paginatedPhotos().length > 0) {
+        <div class="pagination">
+          <button
+            (click)="previousPage()"
+            [disabled]="currentPage() === 1">
+            Previous
+          </button>
+          <span>Page {{ currentPage() }} of {{ totalPages() }}</span>
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()">
+            Next
+          </button>
+        </div>
+      }
 
-      <app-upload-dialog
-        *ngIf="showUploadDialog"
-        (closed)="showUploadDialog = false"
-        (uploaded)="onPhotoUploaded($event)">
-      </app-upload-dialog>
+      @if (showUploadDialog()) {
+        <app-upload-dialog
+          (closed)="showUploadDialog.set(false)"
+          (uploaded)="onPhotoUploaded($event)">
+        </app-upload-dialog>
+      }
     </div>
   `,
   styles: [`
@@ -171,84 +178,37 @@ import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component'
     }
   `]
 })
-export class PhotoGalleryComponent implements OnInit, OnDestroy {
-  photos: any[] = [];
-  filteredPhotos: any[] = [];
-  loading = false;
-  error: any = null;
-  searchQuery = '';
-  sortBy = 'date';
-  showUploadDialog = false;
-  currentPage = 1;
-  pageSize = 20;
-  totalPages = 1;
+export class PhotoGalleryComponent {
+  private photoService = inject(PhotoService);
+  private notificationService = inject(NotificationService);
 
-  // BUG: Subscriptions stored but some never unsubscribed
-  private subscriptions: Subscription[] = [];
+  // Read service signals directly
+  readonly loading = this.photoService.loading;
+  readonly error = this.photoService.error;
 
-  constructor(
-    private photoService: PhotoService,
-    private notificationService: NotificationService
-  ) {}
+  // Local UI state signals
+  searchQuery = signal('');
+  sortBy = signal('date');
+  showUploadDialog = signal(false);
+  currentPage = signal(1);
+  pageSize = signal(20);
 
-  ngOnInit() {
-    this.loadPhotos();
-
-    // BUG: Memory leak - subscription added but cleanup is inconsistent
-    const sub = this.photoService.photos$.subscribe(photos => {
-      this.photos = photos;
-      this.applyFilters();
-    });
-    this.subscriptions.push(sub);
-
-    // BUG: Another subscription not tracked
-    this.photoService.uploadProgress$.subscribe(progress => {
-      console.log('Upload progress:', progress);
-    });
-  }
-
-  ngOnDestroy() {
-    // BUG: Only unsubscribes from tracked subscriptions, misses the upload progress one
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-  }
-
-  loadPhotos() {
-    this.loading = true;
-    this.error = null;
-
-    // BUG: getPhotos() doesn't return observable, it subscribes internally
-    // This means we can't handle errors here
-    this.photoService.getPhotos();
-
-    // BUG: Sets loading to false immediately, doesn't wait for response
-    // The actual loading state is managed by the subscription above, but race condition exists
-  }
-
-  // BUG: Called on every keyup without debounce
-  onSearch(event: any) {
-    this.searchQuery = event.target.value;
-    this.applyFilters();
-  }
-
-  onSortChange() {
-    this.applyFilters();
-  }
-
-  applyFilters() {
-    let result = [...this.photos];
+  // Computed: filtered and sorted photos (replaces applyFilters())
+  filteredPhotos = computed(() => {
+    let result = [...this.photoService.photos()];
+    const query = this.searchQuery();
 
     // Filter by search query
-    if (this.searchQuery) {
-      // BUG: Case-sensitive search
+    if (query) {
+      const lowerQuery = query.toLowerCase();
       result = result.filter((p: any) =>
-        p.title.includes(this.searchQuery)
+        p.title.toLowerCase().includes(lowerQuery)
       );
     }
 
     // Sort
-    switch (this.sortBy) {
+    switch (this.sortBy()) {
       case 'date':
-        // BUG: uploadedAt is 'any' type, sort might not work correctly
         result.sort((a: any, b: any) => b.uploadedAt - a.uploadedAt);
         break;
       case 'title':
@@ -259,29 +219,44 @@ export class PhotoGalleryComponent implements OnInit, OnDestroy {
         break;
     }
 
-    // Pagination
-    this.totalPages = Math.ceil(result.length / this.pageSize);
-    // BUG: Doesn't reset to page 1 when filters change
-    const start = (this.currentPage - 1) * this.pageSize;
-    this.filteredPhotos = result.slice(start, start + this.pageSize);
+    return result;
+  });
+
+  // Computed: total pages derived from filtered count
+  totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredPhotos().length / this.pageSize()))
+  );
+
+  // Computed: paginated slice of filtered photos
+  paginatedPhotos = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return this.filteredPhotos().slice(start, start + this.pageSize());
+  });
+
+  constructor() {
+    // Reset page to 1 when search or sort changes (fixes pagination bug)
+    effect(() => {
+      // Read the signals to track them
+      this.searchQuery();
+      this.sortBy();
+      // Reset to page 1
+      this.currentPage.set(1);
+    }, { allowSignalWrites: true });
+
+    // Load photos on init
+    this.photoService.getPhotos();
   }
 
   previousPage() {
-    if (this.currentPage > 1) {
-      this.currentPage--;
-      this.applyFilters();
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
     }
   }
 
   nextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-      this.applyFilters();
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
     }
-  }
-
-  openUploadDialog() {
-    this.showUploadDialog = true;
   }
 
   onPhotoLiked(photoId: any) {
@@ -300,8 +275,8 @@ export class PhotoGalleryComponent implements OnInit, OnDestroy {
   }
 
   onPhotoUploaded(photo: any) {
-    this.showUploadDialog = false;
+    this.showUploadDialog.set(false);
     this.notificationService.show('Photo uploaded successfully!', 'success', 3000);
-    this.loadPhotos(); // BUG: Reloads all photos instead of adding to existing list
+    this.photoService.getPhotos(); // BUG: Reloads all photos instead of adding to existing list
   }
 }

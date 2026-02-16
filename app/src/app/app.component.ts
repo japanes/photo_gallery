@@ -1,5 +1,4 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { HeaderComponent } from './components/header/header.component';
@@ -8,23 +7,25 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
+  imports: [RouterOutlet, HeaderComponent, SidebarComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="app-container" [class.dark-mode]="isDarkMode">
+    <div class="app-container" [class.dark-mode]="isDarkMode()">
       <app-header
-        [user]="authService.currentUser"
-        (toggleSidebar)="showSidebar = !showSidebar"
+        [user]="authService.currentUser()"
+        (toggleSidebar)="toggleSidebar()"
         (toggleDarkMode)="toggleDarkMode()">
       </app-header>
 
       <div class="app-body">
-        <app-sidebar
-          *ngIf="showSidebar"
-          [albums]="albums"
-          (albumSelected)="onAlbumSelected($event)">
-        </app-sidebar>
+        @if (showSidebar()) {
+          <app-sidebar
+            [albums]="albums()"
+            (albumSelected)="onAlbumSelected($event)">
+          </app-sidebar>
+        }
 
-        <main class="main-content" [class.with-sidebar]="showSidebar">
+        <main class="main-content" [class.with-sidebar]="showSidebar()">
           <router-outlet></router-outlet>
         </main>
       </div>
@@ -57,22 +58,15 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
     }
   `]
 })
-export class AppComponent implements OnInit {
-  showSidebar = true;
-  isDarkMode = false;
-  albums: any[] = [];
+export class AppComponent {
+  readonly authService = inject(AuthService);
 
-  // PROBLEM: Direct service injection via constructor, public access
-  constructor(public authService: AuthService) {}
+  showSidebar = signal(true);
+  isDarkMode = signal(false);
+  albums = signal<any[]>([]);
 
-  ngOnInit() {
-    // BUG: No error handling, no loading state
-    this.loadAlbums();
-  }
-
-  loadAlbums() {
-    // BUG: This method doesn't actually work - no PhotoService injected
-    // but code doesn't error because albums starts as empty array
+  toggleSidebar() {
+    this.showSidebar.update(v => !v);
   }
 
   onAlbumSelected(albumId: any) {
@@ -81,7 +75,7 @@ export class AppComponent implements OnInit {
   }
 
   toggleDarkMode() {
-    this.isDarkMode = !this.isDarkMode;
+    this.isDarkMode.update(v => !v);
     // BUG: Preference not persisted
   }
 }

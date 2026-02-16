@@ -1,28 +1,26 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { PhotoService } from '../../services/photo.service';
 
-// PROBLEM: No OnPush
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- BUG: No semantic HTML (should use <aside>, <nav>) -->
     <div class="sidebar">
       <div class="sidebar-section">
         <h3>Albums</h3>
         <!-- BUG: No loading state for albums -->
-        <!-- BUG: No trackBy -->
         <ul class="album-list">
-          <li
-            *ngFor="let album of albums"
-            [class.active]="selectedAlbumId === album.id"
-            (click)="selectAlbum(album)">
-            <!-- BUG: No album cover image, just text -->
-            <span class="album-name">{{ album.name }}</span>
-            <span class="album-count">{{ album.photos?.length || 0 }}</span>
-          </li>
+          @for (album of albums(); track album.id) {
+            <li
+              [class.active]="selectedAlbumId() === album.id"
+              (click)="selectAlbum(album)">
+              <!-- BUG: No album cover image, just text -->
+              <span class="album-name">{{ album.name }}</span>
+              <span class="album-count">{{ album.photos?.length || 0 }}</span>
+            </li>
+          }
         </ul>
 
         <!-- BUG: Create album doesn't work -->
@@ -35,30 +33,30 @@ import { PhotoService } from '../../services/photo.service';
         <h3>Tags</h3>
         <!-- BUG: Tags hardcoded, not loaded from API -->
         <div class="tag-cloud">
-          <span
-            *ngFor="let tag of popularTags"
-            class="tag"
-            [class.active]="selectedTags.includes(tag)"
-            (click)="toggleTag(tag)">
-            {{ tag }}
-          </span>
+          @for (tag of popularTags; track tag) {
+            <span
+              class="tag"
+              [class.active]="selectedTags().includes(tag)"
+              (click)="toggleTag(tag)">
+              {{ tag }}
+            </span>
+          }
         </div>
       </div>
 
       <div class="sidebar-section">
         <h3>Quick Stats</h3>
         <div class="stats">
-          <!-- BUG: Stats are hardcoded, not reactive -->
           <div class="stat">
-            <span class="stat-value">{{ totalPhotos }}</span>
+            <span class="stat-value">{{ totalPhotos() }}</span>
             <span class="stat-label">Photos</span>
           </div>
           <div class="stat">
-            <span class="stat-value">{{ totalAlbums }}</span>
+            <span class="stat-value">{{ totalAlbums() }}</span>
             <span class="stat-label">Albums</span>
           </div>
           <div class="stat">
-            <span class="stat-value">{{ totalLikes }}</span>
+            <span class="stat-value">{{ totalLikes() }}</span>
             <span class="stat-label">Likes</span>
           </div>
         </div>
@@ -168,53 +166,43 @@ import { PhotoService } from '../../services/photo.service';
     }
   `]
 })
-export class SidebarComponent implements OnInit {
-  @Input() albums: any[] = [];
-  @Output() albumSelected = new EventEmitter<any>();
+export class SidebarComponent {
+  private photoService = inject(PhotoService);
 
-  selectedAlbumId: any = null;
-  selectedTags: string[] = [];
+  albums = input<any[]>([]);
+  albumSelected = output<any>();
+
+  selectedAlbumId = signal<any>(null);
+  selectedTags = signal<string[]>([]);
 
   // BUG: Hardcoded tags
   popularTags = ['nature', 'portrait', 'landscape', 'urban', 'macro', 'wedding', 'food'];
 
-  // BUG: These values never update
-  totalPhotos = 0;
-  totalAlbums = 0;
-  totalLikes = 0;
-
-  constructor(private photoService: PhotoService) {}
-
-  ngOnInit() {
-    // BUG: Subscribes to photos$ but never unsubscribes - memory leak
-    this.photoService.photos$.subscribe((photos: any[]) => {
-      this.totalPhotos = photos.length;
-      this.totalLikes = photos.reduce((sum: number, p: any) => sum + (p.likes || 0), 0);
-    });
-
-    this.totalAlbums = this.albums.length;
-  }
+  // Computed signals derived from service state — no subscription needed (fixes memory leak)
+  totalPhotos = computed(() => this.photoService.totalPhotos());
+  totalLikes = computed(() => this.photoService.totalLikes());
+  totalAlbums = computed(() => this.albums().length);
 
   selectAlbum(album: any) {
-    this.selectedAlbumId = album.id;
+    this.selectedAlbumId.set(album.id);
     this.albumSelected.emit(album.id);
   }
 
   toggleTag(tag: string) {
-    const index = this.selectedTags.indexOf(tag);
-    if (index > -1) {
-      // BUG: Mutates array directly instead of creating new reference
-      this.selectedTags.splice(index, 1);
-    } else {
-      this.selectedTags.push(tag);
-    }
+    this.selectedTags.update(current => {
+      const index = current.indexOf(tag);
+      if (index > -1) {
+        return current.filter(t => t !== tag);
+      } else {
+        return [...current, tag];
+      }
+    });
     // BUG: Tag filtering not connected to photo service
-    console.log('Selected tags:', this.selectedTags);
+    console.log('Selected tags:', this.selectedTags());
   }
 
   createAlbum() {
     // BUG: Not implemented, just logs
     console.log('Create album - not implemented');
-    // Should open a dialog or navigate to album creation form
   }
 }

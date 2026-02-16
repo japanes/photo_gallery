@@ -1,41 +1,57 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Photo, Album } from '../models/photo.model';
+import { Photo } from '../models/photo.model';
 
-// PROBLEM: No error handling, no retry logic, memory leaks
 @Injectable({ providedIn: 'root' })
 export class PhotoService {
-  // BUG: Public mutable state - should be private with signals or proper encapsulation
-  public photos: any[] = [];
-  public albums: any[] = [];
-  public loading = false;
-  public error: any = null;
+  private http = inject(HttpClient);
+  private destroyRef = inject(DestroyRef);
 
-  // PROBLEM: BehaviorSubjects exposed directly - no encapsulation
-  public photos$ = new BehaviorSubject<any[]>([]);
-  public selectedPhoto$ = new BehaviorSubject<any>(null);
-  public uploadProgress$ = new Subject<any>();
+  // Private mutable signals
+  private _photos = signal<any[]>([]);
+  private _selectedPhoto = signal<any>(null);
+  private _uploadProgress = signal<any>(null);
+  private _loading = signal(false);
+  private _error = signal<any>(null);
+
+  // Public readonly signals
+  readonly photos = this._photos.asReadonly();
+  readonly selectedPhoto = this._selectedPhoto.asReadonly();
+  readonly uploadProgress = this._uploadProgress.asReadonly();
+  readonly loading = this._loading.asReadonly();
+  readonly error = this._error.asReadonly();
+
+  // Computed derived state
+  readonly totalPhotos = computed(() => this._photos().length);
+  readonly totalLikes = computed(() =>
+    this._photos().reduce((sum, p) => sum + (p.likes || 0), 0)
+  );
 
   // BUG: Hardcoded API URL, should use environment config
   private apiUrl = 'https://jsonplaceholder.typicode.com';
 
-  constructor(private http: HttpClient) {}
-
   // BUG: No error handling, returns any, no typing
   getPhotos(albumId?: any) {
-    this.loading = true;
+    this._loading.set(true);
     let url = `${this.apiUrl}/photos`;
     if (albumId) {
       url += `?albumId=${albumId}`;
     }
 
-    // BUG: Subscribe inside service without cleanup - memory leak
-    this.http.get(url).subscribe((data: any) => {
-      this.photos = data.map((item: any) => new Photo(item));
-      this.photos$.next(this.photos);
-      this.loading = false;
+    this.http.get(url).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (data: any) => {
+        this._photos.set(data.map((item: any) => new Photo(item)));
+        this._loading.set(false);
+      },
+      error: (err: any) => {
+        this._error.set(err);
+        this._loading.set(false);
+      }
     });
   }
 
@@ -44,7 +60,7 @@ export class PhotoService {
     return this.http.get(`${this.apiUrl}/photos/${id}`).pipe(
       map((data: any) => {
         const photo = new Photo(data);
-        this.selectedPhoto$.next(photo);
+        this._selectedPhoto.set(photo);
         return photo;
       })
     );
@@ -63,10 +79,12 @@ export class PhotoService {
 
   // BUG: Mutates array directly instead of creating new reference
   deletePhoto(id: any) {
-    this.http.delete(`${this.apiUrl}/photos/${id}`).subscribe(() => {
-      // BUG: Using == instead of ===
-      this.photos = this.photos.filter((p: any) => p.id != id);
-      this.photos$.next(this.photos);
+    this.http.delete(`${this.apiUrl}/photos/${id}`).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this._photos.update(current => current.filter((p: any) => p.id !== id));
+      }
     });
   }
 
@@ -75,13 +93,13 @@ export class PhotoService {
     return this.http.get(`${this.apiUrl}/photos?title_like=${query}`);
   }
 
-  // BUG: Likes stored in memory only, race condition possible
+  // Immutable update via _photos.update() + spread
   likePhoto(id: any) {
-    const photo = this.photos.find((p: any) => p.id == id);
-    if (photo) {
-      photo.likes++;
-      this.photos$.next(this.photos);
-    }
+    this._photos.update(current =>
+      current.map((p: any) =>
+        p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p
+      )
+    );
   }
 
   getAlbums(): Observable<any> {

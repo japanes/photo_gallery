@@ -1,62 +1,71 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { User } from '../models/photo.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // BUG: Storing sensitive data in plain object, publicly accessible
-  public currentUser: any = null;
-  public isAuthenticated = false;
-  public token: any = null;
+  private http = inject(HttpClient);
+  private destroyRef = inject(DestroyRef);
 
-  public user$ = new BehaviorSubject<any>(null);
+  // Private mutable signals
+  private _currentUser = signal<any>(null);
+  private _token = signal<any>(null);
 
-  constructor(private http: HttpClient) {
-    // BUG: Reading from localStorage synchronously in constructor
-    // BUG: No try-catch for JSON.parse
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      this.currentUser = JSON.parse(savedUser);
-      this.isAuthenticated = true;
-      this.user$.next(this.currentUser);
+  // Public readonly signals
+  readonly currentUser = this._currentUser.asReadonly();
+  readonly isAuthenticated = computed(() => this._currentUser() !== null);
+  readonly token = this._token.asReadonly();
+
+  constructor() {
+    // Restore user from localStorage with error handling
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        this._currentUser.set(JSON.parse(savedUser));
+      }
+    } catch {
+      localStorage.removeItem('user');
     }
   }
 
   login(email: string, password: string) {
     // BUG: Sending password in query params instead of body
     return this.http.get(`https://jsonplaceholder.typicode.com/users?email=${email}&password=${password}`)
-      .subscribe((users: any) => {
-        if (users.length > 0) {
-          this.currentUser = new User(users[0]);
-          this.isAuthenticated = true;
-          // BUG: Storing full user object with sensitive data in localStorage
-          localStorage.setItem('user', JSON.stringify(this.currentUser));
-          this.user$.next(this.currentUser);
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (users: any) => {
+          if (users.length > 0) {
+            const user = new User(users[0]);
+            this._currentUser.set(user);
+            // BUG: Storing full user object with sensitive data in localStorage
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+        },
+        error: (err: any) => {
+          console.error('Login failed:', err);
         }
       });
   }
 
   logout() {
-    this.currentUser = null;
-    this.isAuthenticated = false;
-    this.token = null;
+    this._currentUser.set(null);
+    this._token.set(null);
     localStorage.removeItem('user');
-    this.user$.next(null);
   }
 
   // BUG: No actual token validation, just checks if user exists
   isLoggedIn(): boolean {
-    return this.isAuthenticated;
+    return this.isAuthenticated();
   }
 
   // BUG: Role check using magic strings
   hasRole(role: string): boolean {
-    return this.currentUser?.role === role;
+    return this._currentUser()?.role === role;
   }
 
   // BUG: No token refresh mechanism
   getToken(): string {
-    return this.token;
+    return this._token();
   }
 }

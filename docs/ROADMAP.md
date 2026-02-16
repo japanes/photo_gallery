@@ -20,10 +20,10 @@
   - [x] Convert `UploadDialogComponent` from module-based to standalone
   - [x] Remove `GalleryModule` and `SharedModule`
   - [x] Update `main.ts` to use `bootstrapApplication`
-- [ ] Introduce Angular Signals
-  - [ ] Replace `BehaviorSubject` patterns in `PhotoService` with signals
-  - [ ] Use `computed()` for derived state (filtered photos, total likes)
-  - [ ] Replace imperative state in components with signal-based reactivity
+- [x] Introduce Angular Signals
+  - [x] Replace `BehaviorSubject` patterns in `PhotoService` with signals
+  - [x] Use `computed()` for derived state (filtered photos, total likes)
+  - [x] Replace imperative state in components with signal-based reactivity
 - [ ] Fix type safety
   - [ ] Replace ALL `any` types with proper interfaces
   - [ ] Add strict typing to models, services, and components
