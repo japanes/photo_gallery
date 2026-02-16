@@ -1,0 +1,20 @@
+/* Global Styles - PROBLEM: Should use SCSS variables and mixins */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  background: #fff;
+}
+
+/* BUG: No CSS custom properties for theming */
+/* BUG: No responsive breakpoints defined */
+/* BUG: No design tokens / consistent spacing system */
