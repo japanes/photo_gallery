@@ -82,17 +82,17 @@
 - [x] No token refresh mechanism (line 91)
 
 ### `services/notification.service.ts`
-- [ ] No auto-dismiss, no max notifications limit, memory leak potential (line 12)
-- [ ] Using Math.random for IDs (line 15)
-- [ ] No validation of notification type (success/error/warning/info) (line 17)
-- [ ] setTimeout without cleanup on service destroy (line 22)
+- [x] No auto-dismiss, no max notifications limit, memory leak potential (line 12)
+- [x] Using Math.random for IDs (line 15)
+- [x] No validation of notification type (success/error/warning/info) (line 17)
+- [x] setTimeout without cleanup on service destroy (line 22)
 
 ### `components/header/header.component.ts`
-- [ ] No semantic HTML — should use `<header>`, `<nav>` (template, line 14)
-- [ ] Search duplicated in header and gallery, no shared state (template, line 22)
-- [ ] No actual search implementation (line 129)
-- [ ] Hardcoded credentials for "demo" — security issue (line 134)
-- [ ] No confirmation dialog on logout (line 139)
+- [x] No semantic HTML — should use `<header>`, `<nav>` (template, line 14)
+- [x] Search duplicated in header and gallery, no shared state (template, line 22)
+- [x] No actual search implementation (line 129)
+- [x] Hardcoded credentials for "demo" — security issue (line 134)
+- [x] No confirmation dialog on logout (line 139)
 - [x] Direct DOM manipulation (line 145)
 
 ### `components/photo-gallery/photo-gallery.component.ts`

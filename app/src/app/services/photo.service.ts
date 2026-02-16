@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core'
 import { HttpClient, HttpEventType } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, filter, catchError } from 'rxjs/operators';
 import { Photo, Album, UploadProgress, createPhoto } from '../models/photo.model';
 import { environment } from '@env/environment';
 
@@ -18,6 +18,7 @@ export class PhotoService {
   private _loading = signal(false);
   private _error = signal<string | null>(null);
   private _selectedTags = signal<string[]>([]);
+  private _searchQuery = signal('');
 
   // Public readonly signals
   readonly photos = this._photos.asReadonly();
@@ -26,6 +27,7 @@ export class PhotoService {
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly selectedTags = this._selectedTags.asReadonly();
+  readonly searchQuery = this._searchQuery.asReadonly();
 
   // Computed derived state
   readonly totalPhotos = computed(() => this._photos().length);
@@ -111,12 +113,13 @@ export class PhotoService {
         }
         return null;
       }),
+      filter((photo): photo is Photo => photo !== null),
       catchError((err: { message: string }) => {
         this._uploadProgress.set(null);
         this._error.set(err.message ?? 'Upload failed');
         throw err;
       })
-    ) as Observable<Photo>;
+    );
   }
 
   deletePhoto(id: number): void {
@@ -171,6 +174,10 @@ export class PhotoService {
       }
       return [...current, tag];
     });
+  }
+
+  setSearchQuery(query: string): void {
+    this._searchQuery.set(query);
   }
 
   getAlbums(): Observable<Album[]> {

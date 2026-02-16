@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { PhotoService } from '../../services/photo.service';
 import { User } from '../../models/photo.model';
-import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-header',
@@ -12,21 +12,20 @@ import { environment } from '@env/environment';
   imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- BUG: No semantic HTML (should use <header>, <nav>) -->
-    <div class="header">
-      <div class="header-left">
-        <button (click)="toggleSidebar.emit()" class="btn-menu">☰</button>
-        <h1 class="logo">📷 PhotoManager</h1>
-      </div>
+    <header class="header" role="banner">
+      <nav class="header-left" aria-label="Main navigation">
+        <button (click)="toggleSidebar.emit()" class="btn-menu" aria-label="Toggle sidebar">☰</button>
+        <h1 class="logo">PhotoManager</h1>
+      </nav>
 
       <div class="header-center">
-        <!-- BUG: Search duplicated here and in gallery, no shared state -->
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search photos..."
           class="global-search"
-          [(ngModel)]="globalSearchQuery"
-          (keyup.enter)="onGlobalSearch()">
+          [ngModel]="photoService.searchQuery()"
+          (ngModelChange)="photoService.setSearchQuery($event)"
+          aria-label="Search photos">
       </div>
 
       <div class="header-right">
@@ -37,7 +36,8 @@ import { environment } from '@env/environment';
               <img
                 [src]="user()?.avatarUrl"
                 class="avatar"
-                (error)="avatarFailed.set(true)">
+                (error)="avatarFailed.set(true)"
+                alt="User avatar">
             } @else {
               <span class="avatar avatar-fallback">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -50,16 +50,37 @@ import { environment } from '@env/environment';
         }
 
         @if (!authService.isAuthenticated()) {
-          <div>
-            <button (click)="onLogin()">Login</button>
-          </div>
+          @if (showLoginForm()) {
+            <form class="login-form" (ngSubmit)="onLogin()">
+              <input
+                type="email"
+                placeholder="Email"
+                [ngModel]="loginEmail()"
+                (ngModelChange)="loginEmail.set($event)"
+                name="email"
+                required>
+              <input
+                type="password"
+                placeholder="Password"
+                [ngModel]="loginPassword()"
+                (ngModelChange)="loginPassword.set($event)"
+                name="password"
+                required>
+              <button type="submit">Go</button>
+              <button type="button" (click)="showLoginForm.set(false)">✕</button>
+            </form>
+          } @else {
+            <div>
+              <button (click)="showLoginForm.set(true)">Login</button>
+            </div>
+          }
         }
 
         <button (click)="toggleDarkMode.emit()" class="btn-theme">
           🌙
         </button>
       </div>
-    </div>
+    </header>
   `,
   styles: [`
     .header {
@@ -133,33 +154,54 @@ import { environment } from '@env/environment';
       border: none !important;
       font-size: 18px;
     }
+    .login-form {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .login-form input {
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      background: transparent;
+      color: white;
+      font-size: 13px;
+      width: 130px;
+    }
+    .login-form input::placeholder {
+      color: rgba(255,255,255,0.5);
+    }
   `]
 })
 export class HeaderComponent {
   readonly authService = inject(AuthService);
-  private router = inject(Router);
+  readonly photoService = inject(PhotoService);
+  private readonly router = inject(Router);
 
   user = input<User | null>();
   toggleSidebar = output<void>();
   toggleDarkMode = output<void>();
 
   avatarFailed = signal(false);
-  globalSearchQuery = '';
+  showLoginForm = signal(false);
+  loginEmail = signal('');
+  loginPassword = signal('');
 
-  onGlobalSearch() {
-    // BUG: No actual search implementation
-    if (environment.debug) { console.log('Global search:', this.globalSearchQuery); }
+  onLogin(): void {
+    const email = this.loginEmail();
+    const password = this.loginPassword();
+    if (email && password) {
+      this.authService.login(email, password);
+      this.showLoginForm.set(false);
+      this.loginEmail.set('');
+      this.loginPassword.set('');
+    }
   }
 
-  onLogin() {
-    // BUG: Hardcoded credentials for "demo" - security issue
-    this.authService.login('test@example.com', 'password123');
+  onLogout(): void {
+    if (confirm('Are you sure you want to logout?')) {
+      this.authService.logout();
+      this.router.navigate(['/']);
+    }
   }
-
-  onLogout() {
-    // BUG: No confirmation dialog
-    this.authService.logout();
-    this.router.navigate(['/']);
-  }
-
 }

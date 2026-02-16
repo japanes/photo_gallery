@@ -1,30 +1,46 @@
-import { Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Notification, NotificationType } from '../models/photo.model';
+
+const MAX_NOTIFICATIONS = 50;
+const DEFAULT_AUTO_DISMISS_MS = 5000;
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  // Private mutable signal
-  private _notifications = signal<Notification[]>([]);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
+  private nextId = 0;
 
-  // Public readonly signal
+  private readonly _notifications = signal<Notification[]>([]);
   readonly notifications = this._notifications.asReadonly();
 
-  // BUG: No auto-dismiss, no max notifications limit, memory leak potential
-  show(message: string, type: NotificationType, duration?: number): void {
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.activeTimers.forEach(timer => clearTimeout(timer));
+      this.activeTimers.clear();
+    });
+  }
+
+  show(message: string, type: NotificationType, duration: number = DEFAULT_AUTO_DISMISS_MS): void {
     const notification: Notification = {
-      id: Math.random(), // BUG: Using Math.random for IDs
-      message: message,
-      type: type, // BUG: No validation of type (success/error/warning/info)
+      id: ++this.nextId,
+      message,
+      type,
       timestamp: new Date()
     };
-    this._notifications.update(current => [...current, notification]);
 
-    // BUG: setTimeout without cleanup on service destroy
-    if (duration) {
-      setTimeout(() => {
-        this.dismiss(notification.id);
-      }, duration);
-    }
+    this._notifications.update(current => {
+      const updated = [...current, notification];
+      if (updated.length > MAX_NOTIFICATIONS) {
+        return updated.slice(updated.length - MAX_NOTIFICATIONS);
+      }
+      return updated;
+    });
+
+    const timer = setTimeout(() => {
+      this.dismiss(notification.id);
+      this.activeTimers.delete(timer);
+    }, duration);
+    this.activeTimers.add(timer);
   }
 
   dismiss(id: number): void {
@@ -32,6 +48,8 @@ export class NotificationService {
   }
 
   clearAll(): void {
+    this.activeTimers.forEach(timer => clearTimeout(timer));
+    this.activeTimers.clear();
     this._notifications.set([]);
   }
 }

@@ -23,7 +23,7 @@ import { environment } from '@env/environment';
             type="text"
             placeholder="Search photos..."
             [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)"
+            (ngModelChange)="photoService.setSearchQuery($event)"
             class="search-input">
           <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
             <option value="date">Date</option>
@@ -189,15 +189,17 @@ import { environment } from '@env/environment';
 })
 export class PhotoGalleryComponent {
   private route = inject(ActivatedRoute);
-  private photoService = inject(PhotoService);
+  readonly photoService = inject(PhotoService);
   private notificationService = inject(NotificationService);
 
   // Read service signals directly
   readonly loading = this.photoService.loading;
   readonly error = this.photoService.error;
 
+  // Search query shared via PhotoService
+  readonly searchQuery = this.photoService.searchQuery;
+
   // Local UI state signals
-  searchQuery = signal('');
   sortBy = signal('date');
   showUploadDialog = signal(false);
   currentPage = signal(1);
