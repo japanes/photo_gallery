@@ -1,7 +1,6 @@
 import { Component, OnInit, signal, computed, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { NgOptimizedImage } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
@@ -19,7 +18,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 @Component({
   selector: 'app-user-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgOptimizedImage],
+  imports: [FormsModule, NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (user()) {
@@ -270,7 +269,6 @@ export class UserProfileComponent implements OnInit {
   private authService = inject(AuthService);
   private photoService = inject(PhotoService);
   private notificationService = inject(NotificationService);
-  private route = inject(ActivatedRoute);
   private destroyRef = inject(DestroyRef);
 
   readonly user = this.authService.currentUser;
