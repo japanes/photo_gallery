@@ -14,12 +14,12 @@
 
 ## Part 2: Refactoring with Claude Code
 
-- [ ] Migrate to standalone components
-  - [ ] Convert `PhotoGalleryComponent` from module-based to standalone
-  - [ ] Convert `PhotoCardComponent` from module-based to standalone
-  - [ ] Convert `UploadDialogComponent` from module-based to standalone
-  - [ ] Remove `GalleryModule` and `SharedModule`
-  - [ ] Update `main.ts` to use `bootstrapApplication`
+- [x] Migrate to standalone components
+  - [x] Convert `PhotoGalleryComponent` from module-based to standalone
+  - [x] Convert `PhotoCardComponent` from module-based to standalone
+  - [x] Convert `UploadDialogComponent` from module-based to standalone
+  - [x] Remove `GalleryModule` and `SharedModule`
+  - [x] Update `main.ts` to use `bootstrapApplication`
 - [ ] Introduce Angular Signals
   - [ ] Replace `BehaviorSubject` patterns in `PhotoService` with signals
   - [ ] Use `computed()` for derived state (filtered photos, total likes)
