@@ -116,14 +116,14 @@
 - [x] No confirmation before emitting delete (line 143)
 
 ### `components/sidebar/sidebar.component.ts`
-- [ ] No semantic HTML — should use `<aside>`, `<nav>` (template, line 10)
-- [ ] No loading state for albums (template, line 14)
-- [ ] No album cover image, just text (template, line 20)
-- [ ] Create album doesn't work (template, line 27)
-- [ ] Tags hardcoded, not loaded from API (template, line 35)
-- [ ] Fixed height causes content cut-off on small screens (styles, line 74)
-- [ ] Hardcoded tags in component (line 180)
-- [ ] Not implemented, just logs (line 198)
+- [x] No semantic HTML — should use `<aside>`, `<nav>` (template, line 10)
+- [x] No loading state for albums (template, line 14)
+- [x] No album cover image, just text (template, line 20)
+- [x] Create album doesn't work (template, line 27)
+- [x] Tags hardcoded, not loaded from API (template, line 35)
+- [x] Fixed height causes content cut-off on small screens (styles, line 74)
+- [x] Hardcoded tags in component (line 180)
+- [x] Not implemented, just logs (line 198)
 
 ### `components/upload-dialog/upload-dialog.component.ts`
 - [ ] No backdrop click to close, no escape key handler (template, line 14)

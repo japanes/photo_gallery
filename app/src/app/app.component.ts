@@ -4,7 +4,6 @@ import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
-import { Album } from './models/photo.model';
 
 @Component({
   selector: 'app-root',
@@ -22,7 +21,6 @@ import { Album } from './models/photo.model';
       <div class="app-body">
         @if (showSidebar()) {
           <app-sidebar
-            [albums]="albums()"
             (albumSelected)="onAlbumSelected($event)">
           </app-sidebar>
         }
@@ -65,7 +63,6 @@ export class AppComponent {
   readonly themeService = inject(ThemeService);
 
   showSidebar = signal(true);
-  albums = signal<Album[]>([]);
 
   toggleSidebar() {
     this.showSidebar.update(v => !v);

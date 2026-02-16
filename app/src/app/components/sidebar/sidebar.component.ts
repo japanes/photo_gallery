@@ -1,50 +1,77 @@
-import { Component, input, output, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, output, signal, computed, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
+import { NotificationService } from '../../services/notification.service';
 import { Album } from '../../models/photo.model';
-import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- BUG: No semantic HTML (should use <aside>, <nav>) -->
-    <div class="sidebar">
-      <div class="sidebar-section">
+    <aside class="sidebar">
+      <nav class="sidebar-section" aria-label="Albums">
         <h3>Albums</h3>
-        <!-- BUG: No loading state for albums -->
-        <ul class="album-list">
-          @for (album of albums(); track album.id) {
-            <li
-              [class.active]="selectedAlbumId() === album.id"
-              (click)="selectAlbum(album)">
-              <!-- BUG: No album cover image, just text -->
-              <span class="album-name">{{ album.name }}</span>
-              <span class="album-count">{{ album.photos?.length || 0 }}</span>
-            </li>
+        @if (albumsLoading()) {
+          <div class="loading-state">
+            @for (item of skeletonItems; track item) {
+              <div class="skeleton-album">
+                <div class="skeleton-cover"></div>
+                <div class="skeleton-text"></div>
+              </div>
+            }
+          </div>
+        } @else {
+          <ul class="album-list">
+            @for (album of albums(); track album.id) {
+              <li
+                [class.active]="selectedAlbumId() === album.id"
+                (click)="selectAlbum(album)"
+                (keydown.enter)="selectAlbum(album)"
+                tabindex="0">
+                @if (album.coverPhotoUrl) {
+                  <img
+                    class="album-cover"
+                    [src]="album.coverPhotoUrl"
+                    [alt]="album.name + ' cover'"
+                    loading="lazy">
+                } @else {
+                  <span class="album-initial" aria-hidden="true">
+                    {{ album.name.charAt(0).toUpperCase() }}
+                  </span>
+                }
+                <span class="album-name">{{ album.name }}</span>
+                <span class="album-count">{{ album.photos?.length || 0 }}</span>
+              </li>
+            }
+          </ul>
+          @if (albums().length === 0) {
+            <p class="empty-message">No albums yet</p>
           }
-        </ul>
+        }
 
-        <!-- BUG: Create album doesn't work -->
         <button (click)="createAlbum()" class="btn-create">
           + New Album
         </button>
-      </div>
+      </nav>
 
-      <div class="sidebar-section">
+      <nav class="sidebar-section" aria-label="Tags">
         <h3>Tags</h3>
-        <!-- BUG: Tags hardcoded, not loaded from API -->
-        <div class="tag-cloud">
-          @for (tag of popularTags; track tag) {
-            <span
+        <div class="tag-cloud" role="group" aria-label="Filter by tags">
+          @for (tag of popularTags(); track tag) {
+            <button
               class="tag"
               [class.active]="selectedTags().includes(tag)"
+              [attr.aria-pressed]="selectedTags().includes(tag)"
               (click)="toggleTag(tag)">
               {{ tag }}
-            </span>
+            </button>
+          }
+          @if (popularTags().length === 0) {
+            <p class="empty-message">No tags available</p>
           }
         </div>
-      </div>
+      </nav>
 
       <div class="sidebar-section">
         <h3>Quick Stats</h3>
@@ -63,7 +90,7 @@ import { environment } from '@env/environment';
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   `,
   styles: [`
     .sidebar {
@@ -72,8 +99,8 @@ import { environment } from '@env/environment';
       border-right: 1px solid var(--border-color);
       padding: 16px;
       overflow-y: auto;
-      /* BUG: Fixed height causes content cut-off on small screens */
-      height: calc(100vh - 60px);
+      height: 100%;
+      min-height: 0;
     }
     .sidebar-section {
       margin-bottom: 24px;
@@ -92,8 +119,8 @@ import { environment } from '@env/environment';
     }
     .album-list li {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 8px;
       padding: 8px 12px;
       border-radius: 6px;
       cursor: pointer;
@@ -102,15 +129,46 @@ import { environment } from '@env/environment';
     .album-list li:hover {
       background: var(--hover-bg);
     }
+    .album-list li:focus-visible {
+      outline: 2px solid #3498db;
+      outline-offset: -2px;
+    }
     .album-list li.active {
       background: #3498db;
       color: white;
+    }
+    .album-cover {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .album-initial {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: #3498db;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .album-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .album-count {
       background: rgba(0,0,0,0.1);
       padding: 2px 8px;
       border-radius: 10px;
       font-size: 12px;
+      flex-shrink: 0;
     }
     .btn-create {
       width: 100%;
@@ -134,10 +192,14 @@ import { environment } from '@env/environment';
     .tag {
       padding: 4px 10px;
       background: var(--bg-tertiary);
+      border: none;
       border-radius: 14px;
       font-size: 12px;
       cursor: pointer;
       color: var(--text-primary);
+    }
+    .tag:hover {
+      opacity: 0.8;
     }
     .tag.active {
       background: #3498db;
@@ -167,24 +229,79 @@ import { environment } from '@env/environment';
       color: var(--text-tertiary);
       margin-top: 2px;
     }
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .skeleton-album {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+    }
+    .skeleton-cover {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--border-light, #e0e0e0) 25%, var(--bg-input, #f0f0f0) 50%, var(--border-light, #e0e0e0) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      flex-shrink: 0;
+    }
+    .skeleton-text {
+      height: 14px;
+      flex: 1;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--border-light, #e0e0e0) 25%, var(--bg-input, #f0f0f0) 50%, var(--border-light, #e0e0e0) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .empty-message {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      padding: 8px 12px;
+      margin: 0;
+    }
   `]
 })
 export class SidebarComponent {
   private photoService = inject(PhotoService);
+  private notificationService = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
 
-  albums = input<Album[]>([]);
   albumSelected = output<number>();
 
+  albums = signal<Album[]>([]);
+  albumsLoading = signal(true);
   selectedAlbumId = signal<number | null>(null);
+
   readonly selectedTags = this.photoService.selectedTags;
+  readonly popularTags = this.photoService.popularTags;
 
-  // BUG: Hardcoded tags
-  popularTags = ['nature', 'portrait', 'landscape', 'urban', 'macro', 'wedding', 'food'];
+  readonly skeletonItems = Array.from({ length: 4 }, (_, i) => i);
 
-  // Computed signals derived from service state — no subscription needed (fixes memory leak)
   totalPhotos = computed(() => this.photoService.totalPhotos());
   totalLikes = computed(() => this.photoService.totalLikes());
   totalAlbums = computed(() => this.albums().length);
+
+  constructor() {
+    this.photoService.getAlbums().pipe(
+      takeUntilDestroyed()
+    ).subscribe({
+      next: (albums) => {
+        this.albums.set(albums);
+        this.albumsLoading.set(false);
+      },
+      error: () => {
+        this.albumsLoading.set(false);
+      }
+    });
+  }
 
   selectAlbum(album: Album) {
     this.selectedAlbumId.set(album.id);
@@ -196,7 +313,21 @@ export class SidebarComponent {
   }
 
   createAlbum() {
-    // BUG: Not implemented
-    if (environment.debug) { console.log('Create album - not implemented'); }
+    const name = prompt('Enter album name:');
+    if (!name?.trim()) {
+      return;
+    }
+
+    this.photoService.createAlbum(name.trim()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (album) => {
+        this.albums.update(current => [...current, album]);
+        this.notificationService.show(`Album "${album.name}" created`, 'success', 3000);
+      },
+      error: () => {
+        this.notificationService.show('Failed to create album', 'error', 3000);
+      }
+    });
   }
 }

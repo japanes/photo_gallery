@@ -35,6 +35,18 @@ export class PhotoService {
     this._photos().reduce((sum, p) => sum + (p.likes || 0), 0)
   );
 
+  readonly popularTags = computed(() => {
+    const tagCounts = new Map<string, number>();
+    for (const photo of this._photos()) {
+      for (const tag of photo.tags) {
+        tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      }
+    }
+    return [...tagCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag);
+  });
+
   private readonly apiUrl = environment.apiUrl;
 
   getPhotos(albumId?: number): void {
@@ -185,10 +197,44 @@ export class PhotoService {
   }
 
   getAlbums(): Observable<Album[]> {
-    return this.http.get<Album[]>(`${this.apiUrl}/albums`).pipe(
+    return this.http.get<Array<{ userId: number; id: number; title: string }>>(
+      `${this.apiUrl}/albums`
+    ).pipe(
+      map(data => data.map(item => ({
+        id: item.id,
+        name: item.title,
+        description: '',
+        photos: [],
+        createdAt: new Date(),
+        ownerId: item.userId,
+        coverPhotoUrl: '',
+        isPublic: true,
+      }))),
       catchError((err: { message: string }) => {
         this._error.set(err.message ?? 'Failed to load albums');
         return of([]);
+      })
+    );
+  }
+
+  createAlbum(name: string): Observable<Album> {
+    return this.http.post<{ id: number; title: string; userId: number }>(
+      `${this.apiUrl}/albums`,
+      { title: name, userId: 1 }
+    ).pipe(
+      map(data => ({
+        id: data.id,
+        name: data.title,
+        description: '',
+        photos: [],
+        createdAt: new Date(),
+        ownerId: data.userId,
+        coverPhotoUrl: '',
+        isPublic: true,
+      })),
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to create album');
+        throw err;
       })
     );
   }
