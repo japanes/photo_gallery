@@ -1,6 +1,7 @@
 ---
 name: custom-git-commit
-description: Commits staged changes to git with an auto-generated description of what was done in the current iteration, then pushes to remote. Use when the user wants to commit and push their work. Does NOT add files — only commits what is already staged.
+description: Commits changes to git with an auto-generated description of what was done in the current iteration, then pushes to remote. Use when the user wants to commit and push their work. Stages all modified files automatically if nothing is staged.
+disable-model-invocation: true
 allowed-tools: Bash(git:*)
 ---
 
@@ -10,14 +11,16 @@ Commit currently staged changes with a detailed description of what was done, th
 
 ## Rules
 
-1. **NEVER run `git add`** — do not add any files to the staging area. Only work with what is already staged.
-2. If there are no staged changes, inform the user that there is nothing to commit and list unstaged/untracked files so they can stage manually.
+1. If there are **staged changes**, commit only those (do not add anything extra).
+2. If there are **no staged changes** but there are **modified tracked files**, run `git add -u` to stage all modified/deleted tracked files, then commit.
+3. If there are **no staged changes** and **no modified tracked files**, inform the user that there is nothing to commit.
+4. **Never** stage untracked files automatically — only the user decides when to add new files.
 
 ## Steps
 
 1. Run `git status` to check the current state of the repository.
 2. Run `git diff --cached --stat` and `git diff --cached` to see exactly what is staged.
-3. If nothing is staged, stop and tell the user. Show them unstaged changes and untracked files so they can decide what to stage.
+3. If nothing is staged, check for modified tracked files. If they exist, run `git add -u` to stage them, then re-run `git diff --cached --stat` and `git diff --cached`. If no modified files either, stop and inform the user.
 4. Analyze the staged diff and compose a commit message:
    - **First line**: short summary (max 72 chars), imperative mood (e.g. "Add search feature", "Fix pagination bug")
    - **Body** (after a blank line): bullet-point list describing each meaningful change made in this iteration. Be specific — mention file names, functions, components, or logic that changed.

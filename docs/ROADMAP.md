@@ -7,10 +7,10 @@
   - [x] Known patterns and anti-patterns
   - [x] Tech stack details
   - [x] Development commands
-- [ ] Configure Claude Code for the project
-  - [ ] Set up `.claude/settings.json`
-  - [ ] Create at least 2 custom slash commands for recurring tasks
-  - [ ] Configure any relevant MCP servers
+- [x] Configure Claude Code for the project
+  - [x] Set up `.claude/settings.json`
+  - [x] Create at least 2 custom slash commands for recurring tasks
+  - [x] Configure any relevant MCP servers
 
 ## Part 2: Refactoring with Claude Code
 
