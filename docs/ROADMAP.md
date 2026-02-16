@@ -143,13 +143,13 @@
 - [x] No cleanup of preview URL — `URL.revokeObjectURL` not called (line 283)
 
 ### `components/user-profile/user-profile.component.ts`
-- [ ] No NgOptimizedImage (template, line 19)
-- [ ] Role displayed using magic string comparison (template, line 24)
-- [ ] No lazy loading, shows ALL photos (template, line 48)
-- [ ] Save doesn't do anything (template, line 69)
-- [ ] No loading state, no "not found" state (template, line 76)
-- [ ] Not implemented, just logs (line 238)
-- [ ] Should make HTTP call and update on success (line 240)
+- [x] No NgOptimizedImage (template, line 19)
+- [x] Role displayed using magic string comparison (template, line 24)
+- [x] No lazy loading, shows ALL photos (template, line 48)
+- [x] Save doesn't do anything (template, line 69)
+- [x] No loading state, no "not found" state (template, line 76)
+- [x] Not implemented, just logs (line 238)
+- [x] Should make HTTP call and update on success (line 240)
 
 ---
 

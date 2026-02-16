@@ -1,7 +1,7 @@
 import { Component, input, output, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { PhotoService } from '../../services/photo.service';
 import { User } from '../../models/photo.model';
@@ -9,7 +9,7 @@ import { User } from '../../models/photo.model';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="header" role="banner">
@@ -31,20 +31,22 @@ import { User } from '../../models/photo.model';
       <div class="header-right">
         @if (authService.isAuthenticated()) {
           <div class="user-info">
-            <span>{{ user()?.name }}</span>
-            @if (!avatarFailed()) {
-              <img
-                [src]="user()?.avatarUrl"
-                class="avatar"
-                (error)="avatarFailed.set(true)"
-                alt="User avatar">
-            } @else {
-              <span class="avatar avatar-fallback">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-                </svg>
-              </span>
-            }
+            <a routerLink="/profile" class="profile-link" aria-label="Go to profile">
+              <span>{{ user()?.name }}</span>
+              @if (!avatarFailed()) {
+                <img
+                  [src]="user()?.avatarUrl"
+                  class="avatar"
+                  (error)="avatarFailed.set(true)"
+                  alt="User avatar">
+              } @else {
+                <span class="avatar avatar-fallback">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                  </svg>
+                </span>
+              }
+            </a>
             <button (click)="onLogout()">Logout</button>
           </div>
         }
@@ -124,6 +126,17 @@ import { User } from '../../models/photo.model';
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+    .profile-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .profile-link:hover {
+      opacity: 0.85;
     }
     .avatar {
       width: 32px;

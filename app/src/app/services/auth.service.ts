@@ -1,6 +1,8 @@
 import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { User, UserRole } from '../models/photo.model';
 import { environment } from '@env/environment';
 
@@ -135,6 +137,28 @@ export class AuthService {
     };
     this._token.set(newToken);
     localStorage.setItem(AuthService.TOKEN_KEY, JSON.stringify(newToken));
+  }
+
+  updateProfile(updates: { name: string; email: string }): Observable<User> {
+    const currentUser = this._currentUser();
+    if (currentUser === null) {
+      return throwError(() => new Error('No user logged in'));
+    }
+    return this.http.put<JsonPlaceholderUser>(
+      `${environment.apiUrl}/users/${currentUser.id}`,
+      updates
+    ).pipe(
+      map((data: JsonPlaceholderUser) => {
+        const updatedUser: User = {
+          ...currentUser,
+          name: data.name,
+          email: data.email,
+        };
+        this._currentUser.set(updatedUser);
+        localStorage.setItem(AuthService.USER_KEY, JSON.stringify(updatedUser));
+        return updatedUser;
+      })
+    );
   }
 
   private isTokenValid(): boolean {
