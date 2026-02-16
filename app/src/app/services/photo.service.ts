@@ -1,9 +1,10 @@
 import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { Photo, Album, UploadProgress, createPhoto } from '../models/photo.model';
+import { environment } from '@env/environment';
 
 @Injectable({ providedIn: 'root' })
 export class PhotoService {
@@ -32,66 +33,125 @@ export class PhotoService {
     this._photos().reduce((sum, p) => sum + (p.likes || 0), 0)
   );
 
-  // BUG: Hardcoded API URL, should use environment config
-  private apiUrl = 'https://jsonplaceholder.typicode.com';
+  private readonly apiUrl = environment.apiUrl;
 
-  // BUG: No error handling, returns any, no typing
   getPhotos(albumId?: number): void {
     this._loading.set(true);
+    this._error.set(null);
     const url = albumId
       ? `${this.apiUrl}/albums/${albumId}/photos`
       : `${this.apiUrl}/photos`;
 
     this.http.get<Photo[]>(url).pipe(
+      map((data: Photo[]) => data.map((item: Photo) => createPhoto(item))),
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to load photos');
+        return of([] as Photo[]);
+      }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (data: Photo[]) => {
-        this._photos.set(data.map((item: Photo) => createPhoto(item)));
-        this._loading.set(false);
-      },
-      error: (err: { message: string }) => {
-        this._error.set(err.message);
+      next: (photos: Photo[]) => {
+        this._photos.set(photos);
         this._loading.set(false);
       }
     });
   }
 
-  // BUG: No return type, mutates internal state directly
   getPhotoById(id: number): Observable<Photo> {
     return this.http.get<Photo>(`${this.apiUrl}/photos/${id}`).pipe(
-      map((data: Photo) => {
-        const photo = createPhoto(data);
-        this._selectedPhoto.set(photo);
-        return photo;
+      map((data: Photo) => createPhoto(data)),
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to load photo');
+        throw err;
       })
     );
   }
 
-  // BUG: No validation, no progress tracking, fake implementation
-  uploadPhoto(file: File, albumId: number, metadata: Record<string, unknown>): Observable<Photo> {
-    // BUG: Building FormData incorrectly, no file type validation
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('albumId', String(albumId));
-    formData.append('metadata', JSON.stringify(metadata)); // BUG: Should be JSON.stringify
-
-    return this.http.post<Photo>(`${this.apiUrl}/photos`, formData);
+  selectPhoto(photo: Photo | null): void {
+    this._selectedPhoto.set(photo);
   }
 
-  // BUG: Mutates array directly instead of creating new reference
+  private static readonly ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  uploadPhoto(file: File, albumId: number, metadata: Record<string, unknown>): Observable<Photo> {
+    if (!PhotoService.ALLOWED_FILE_TYPES.includes(file.type)) {
+      this._error.set(`Invalid file type: ${file.type}. Allowed: ${PhotoService.ALLOWED_FILE_TYPES.join(', ')}`);
+      throw new Error(this._error()!);
+    }
+
+    if (file.size > PhotoService.MAX_FILE_SIZE) {
+      this._error.set(`File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Max: 10 MB`);
+      throw new Error(this._error()!);
+    }
+
+    this._uploadProgress.set({ percent: 0, loaded: 0, total: file.size });
+
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('albumId', String(albumId));
+    formData.append('metadata', JSON.stringify(metadata));
+
+    return this.http.post<Photo>(`${this.apiUrl}/photos`, formData, {
+      reportProgress: true,
+      observe: 'events'
+    }).pipe(
+      map(event => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const total = event.total ?? file.size;
+          this._uploadProgress.set({
+            percent: Math.round((event.loaded / total) * 100),
+            loaded: event.loaded,
+            total
+          });
+        }
+        if (event.type === HttpEventType.Response) {
+          this._uploadProgress.set(null);
+          return createPhoto(event.body as Photo);
+        }
+        return null;
+      }),
+      catchError((err: { message: string }) => {
+        this._uploadProgress.set(null);
+        this._error.set(err.message ?? 'Upload failed');
+        throw err;
+      })
+    ) as Observable<Photo>;
+  }
+
   deletePhoto(id: number): void {
     this.http.delete(`${this.apiUrl}/photos/${id}`).pipe(
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to delete photo');
+        return of(null);
+      }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: () => {
-        this._photos.update(current => current.filter((p: Photo) => p.id !== id));
+      next: (result) => {
+        if (result !== null) {
+          this._photos.update(current => [...current.filter((p: Photo) => p.id !== id)]);
+        }
       }
     });
   }
 
-  // BUG: No debounce, no minimum query length, hits API on every keystroke
+  private static readonly MIN_SEARCH_LENGTH = 2;
+
   searchPhotos(query: string): Observable<Photo[]> {
-    return this.http.get<Photo[]>(`${this.apiUrl}/photos?title_like=${query}`);
+    const trimmed = query.trim();
+    if (trimmed.length < PhotoService.MIN_SEARCH_LENGTH) {
+      return of([]);
+    }
+
+    return this.http.get<Photo[]>(
+      `${this.apiUrl}/photos?title_like=${encodeURIComponent(trimmed)}`
+    ).pipe(
+      map((data: Photo[]) => data.map((item: Photo) => createPhoto(item))),
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Search failed');
+        return of([]);
+      })
+    );
   }
 
   // Immutable update via _photos.update() + spread
@@ -114,11 +174,23 @@ export class PhotoService {
   }
 
   getAlbums(): Observable<Album[]> {
-    return this.http.get<Album[]>(`${this.apiUrl}/albums`);
+    return this.http.get<Album[]>(`${this.apiUrl}/albums`).pipe(
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to load albums');
+        return of([]);
+      })
+    );
   }
 
-  // BUG: No pagination support
-  getPhotosByAlbum(albumId: number): Observable<Photo[]> {
-    return this.http.get<Photo[]>(`${this.apiUrl}/albums/${albumId}/photos`);
+  getPhotosByAlbum(albumId: number, page: number = 1, limit: number = 20): Observable<Photo[]> {
+    return this.http.get<Photo[]>(
+      `${this.apiUrl}/albums/${albumId}/photos?_page=${page}&_limit=${limit}`
+    ).pipe(
+      map((data: Photo[]) => data.map((item: Photo) => createPhoto(item))),
+      catchError((err: { message: string }) => {
+        this._error.set(err.message ?? 'Failed to load album photos');
+        return of([]);
+      })
+    );
   }
 }

@@ -66,20 +66,20 @@
 - [x] `const k = 1000` — should be 1024 for binary (line 13)
 
 ### `services/photo.service.ts`
-- [ ] Hardcoded API URL, should use environment config (line 35)
-- [ ] No error handling, returns any, no typing (line 38)
-- [ ] No return type, mutates internal state directly (line 60)
-- [ ] No validation, no progress tracking, fake upload implementation (line 71)
-- [ ] Building FormData incorrectly, no file type validation (line 73)
-- [ ] `JSON.stringify` comment mismatch in metadata append (line 77)
-- [ ] Mutates array directly instead of creating new reference (line 82)
-- [ ] No debounce, no minimum query length, hits API on every keystroke (line 93)
-- [ ] No pagination support (line 121)
+- [x] Hardcoded API URL, should use environment config (line 35)
+- [x] No error handling, returns any, no typing (line 38)
+- [x] No return type, mutates internal state directly (line 60)
+- [x] No validation, no progress tracking, fake upload implementation (line 71)
+- [x] Building FormData incorrectly, no file type validation (line 73)
+- [x] `JSON.stringify` comment mismatch in metadata append (line 77)
+- [x] Mutates array directly instead of creating new reference (line 82)
+- [x] No debounce, no minimum query length, hits API on every keystroke (line 93)
+- [x] No pagination support (line 121)
 
 ### `services/auth.service.ts`
-- [ ] No actual token validation, just checks if user exists (line 81)
-- [ ] Role check using magic strings (line 86)
-- [ ] No token refresh mechanism (line 91)
+- [x] No actual token validation, just checks if user exists (line 81)
+- [x] Role check using magic strings (line 86)
+- [x] No token refresh mechanism (line 91)
 
 ### `services/notification.service.ts`
 - [ ] No auto-dismiss, no max notifications limit, memory leak potential (line 12)
