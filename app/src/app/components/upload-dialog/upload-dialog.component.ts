@@ -1,9 +1,17 @@
-import { Component, output, signal, inject, OnInit, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component, input, output, signal, computed, inject,
+  OnInit, AfterViewInit, DestroyRef, ChangeDetectionStrategy,
+  HostListener, ElementRef
+} from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
-import { Photo, Album } from '../../models/photo.model';
+import { NotificationService } from '../../services/notification.service';
+import { Photo } from '../../models/photo.model';
+
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 @Component({
   selector: 'app-upload-dialog',
@@ -11,35 +19,50 @@ import { Photo, Album } from '../../models/photo.model';
   imports: [ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- BUG: No backdrop click to close, no escape key handler -->
-    <!-- BUG: No focus trap for accessibility -->
-    <div class="dialog-overlay">
-      <div class="dialog-content">
+    <!-- FIX: Backdrop click closes dialog; escape key handled via @HostListener -->
+    <!-- FIX: Focus trap implemented via AfterViewInit + Tab key interception -->
+    <div
+      class="dialog-overlay"
+      (click)="close()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upload-dialog-title">
+      <div class="dialog-content" (click)="$event.stopPropagation()">
         <div class="dialog-header">
-          <h3>Upload Photo</h3>
-          <button (click)="close()" class="btn-close">&times;</button>
+          <h3 id="upload-dialog-title">Upload Photo</h3>
+          <button (click)="close()" class="btn-close" aria-label="Close dialog">&times;</button>
         </div>
 
         <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
-          <!-- BUG: No drag-and-drop support -->
-          <!-- BUG: No file type restriction in UI (only in validation) -->
-          <div class="form-group">
-            <label>Select Photo</label>
+          <!-- FIX: Drag-and-drop support added -->
+          <!-- FIX: File type restriction shown in UI -->
+          <div
+            class="form-group drop-zone"
+            [class.drag-over]="isDragOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)">
+            <label for="upload-file">Select Photo</label>
             <input
+              id="upload-file"
               type="file"
               (change)="onFileSelected($event)"
-              accept="image/*">
-            <!-- BUG: Error message shown incorrectly -->
-            @if (uploadForm.get('file')?.invalid) {
-              <div class="error">
-                Please select a file
-              </div>
+              accept="image/jpeg,image/png,image/gif,image/webp">
+            <p class="drop-hint">or drag and drop an image here</p>
+            <p class="file-types-hint">Allowed: JPEG, PNG, GIF, WebP (max 10 MB)</p>
+            <!-- FIX: Error shown only when touched -->
+            @if (uploadForm.get('file')?.invalid && uploadForm.get('file')?.touched) {
+              <div class="error">Please select a file</div>
+            }
+            @if (fileError()) {
+              <div class="error">{{ fileError() }}</div>
             }
           </div>
 
           <div class="form-group">
-            <label>Title</label>
+            <label for="upload-title">Title</label>
             <input
+              id="upload-title"
               type="text"
               formControlName="title"
               placeholder="Enter photo title">
@@ -51,9 +74,9 @@ import { Photo, Album } from '../../models/photo.model';
           </div>
 
           <div class="form-group">
-            <label>Album</label>
-            <!-- BUG: Albums not loaded, empty select -->
-            <select formControlName="albumId">
+            <label for="upload-album">Album</label>
+            <!-- FIX: Albums loaded from API in ngOnInit -->
+            <select id="upload-album" formControlName="albumId">
               <option value="">Select album</option>
               @for (album of albums(); track album.id) {
                 <option [value]="album.id">
@@ -64,8 +87,9 @@ import { Photo, Album } from '../../models/photo.model';
           </div>
 
           <div class="form-group">
-            <label>Tags (comma separated)</label>
+            <label for="upload-tags">Tags (comma separated)</label>
             <input
+              id="upload-tags"
               type="text"
               formControlName="tags"
               placeholder="nature, landscape, sunset">
@@ -78,7 +102,16 @@ import { Photo, Album } from '../../models/photo.model';
             </label>
           </div>
 
-          <!-- BUG: No upload progress bar -->
+          <!-- FIX: Upload progress bar -->
+          @if (uploading()) {
+            <div class="progress-bar-container" role="progressbar"
+              [attr.aria-valuenow]="uploadPercent()"
+              aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar" [style.width.%]="uploadPercent()"></div>
+              <span class="progress-text">{{ uploadPercent() }}%</span>
+            </div>
+          }
+
           <div class="dialog-actions">
             <button type="button" (click)="close()">Cancel</button>
             <button
@@ -90,10 +123,10 @@ import { Photo, Album } from '../../models/photo.model';
           </div>
         </form>
 
-        <!-- BUG: Preview shown even when no file selected -->
+        <!-- FIX: Preview only shown when file is selected (previewUrl set after validation) -->
         @if (previewUrl()) {
           <div class="preview">
-            <img [src]="previewUrl()" alt="Preview">
+            <img [src]="previewUrl()" alt="Preview of selected photo">
           </div>
         }
       </div>
@@ -163,6 +196,48 @@ import { Photo, Album } from '../../models/photo.model';
       font-size: 12px;
       margin-top: 4px;
     }
+    .drop-zone {
+      border: 2px dashed var(--border-light);
+      border-radius: 8px;
+      padding: 16px;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .drop-zone.drag-over {
+      border-color: #3498db;
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+    .drop-hint {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin: 4px 0 0;
+    }
+    .file-types-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin: 2px 0 0;
+    }
+    .progress-bar-container {
+      position: relative;
+      height: 24px;
+      background: var(--border-light);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #3498db;
+      transition: width 0.2s;
+    }
+    .progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
     .dialog-actions {
       display: flex;
       justify-content: flex-end;
@@ -197,10 +272,15 @@ import { Photo, Album } from '../../models/photo.model';
     }
   `]
 })
-export class UploadDialogComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private photoService = inject(PhotoService);
-  private destroyRef = inject(DestroyRef);
+export class UploadDialogComponent implements OnInit, AfterViewInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly photoService = inject(PhotoService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+
+  /** When set, pre-selects this album in the dropdown */
+  preselectedAlbumId = input<number | undefined>(undefined);
 
   closed = output<void>();
   uploaded = output<Photo>();
@@ -209,7 +289,15 @@ export class UploadDialogComponent implements OnInit {
   selectedFile = signal<File | null>(null);
   previewUrl = signal<string | null>(null);
   uploading = signal(false);
-  albums = signal<Album[]>([]);
+  readonly albums = this.photoService.albums;
+  isDragOver = signal(false);
+  fileError = signal<string | null>(null);
+
+  /** Upload progress percentage derived from PhotoService signal */
+  uploadPercent = computed(() => this.photoService.uploadProgress()?.percent ?? 0);
+
+  private focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  private previouslyFocusedElement: Element | null = null;
 
   constructor() {
     this.uploadForm = this.fb.group({
@@ -219,36 +307,120 @@ export class UploadDialogComponent implements OnInit {
       isPublic: [true],
       file: [null, Validators.required]
     });
+
+    this.destroyRef.onDestroy(() => this.cleanup());
   }
 
-  ngOnInit() {
-    this.photoService.getAlbums().pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (albums: Album[]) => this.albums.set(albums)
-    });
-  }
+  ngOnInit(): void {
+    // Ensure albums are loaded (no-op if already loaded by sidebar)
+    this.photoService.loadAlbums();
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-
-    // BUG: No file size validation
-    // BUG: No file type validation beyond accept attribute
-    if (file) {
-      this.selectedFile.set(file);
-      this.uploadForm.patchValue({ file: file });
-
-      // BUG: FileReader not cleaned up, potential memory leak
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        this.previewUrl.set(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    // Pre-select the current album if provided and it exists in the list
+    const preselected = this.preselectedAlbumId();
+    if (preselected !== undefined && this.albums().some(a => a.id === preselected)) {
+      this.uploadForm.patchValue({ albumId: String(preselected) });
     }
   }
 
-  onSubmit() {
+  ngAfterViewInit(): void {
+    // Save previously focused element to restore on close
+    this.previouslyFocusedElement = document.activeElement;
+    // Focus the first focusable element inside the dialog
+    const el = this.elementRef.nativeElement as HTMLElement;
+    const first = el.querySelector<HTMLElement>(this.focusableSelector);
+    first?.focus();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.close();
+      return;
+    }
+    if (event.key === 'Tab') {
+      this.trapFocus(event);
+    }
+  }
+
+  /** Keep Tab cycling within the dialog */
+  private trapFocus(event: KeyboardEvent): void {
+    const el = this.elementRef.nativeElement as HTMLElement;
+    const focusable = Array.from(el.querySelectorAll<HTMLElement>(this.focusableSelector));
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  // --- Drag-and-drop handlers ---
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver.set(false);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver.set(false);
+
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      this.processFile(file);
+    }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.processFile(file);
+    }
+  }
+
+  /** Validate file type and size, then set preview via blob URL */
+  private processFile(file: File): void {
+    this.fileError.set(null);
+
+    // FIX: File type validation
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      this.fileError.set('Invalid file type. Allowed: JPEG, PNG, GIF, WebP');
+      return;
+    }
+
+    // FIX: File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      this.fileError.set(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max: 10 MB`);
+      return;
+    }
+
+    // FIX: Revoke previous blob URL before creating a new one
+    this.revokePreviewUrl();
+
+    this.selectedFile.set(file);
+    this.uploadForm.patchValue({ file });
+    this.uploadForm.get('file')?.markAsTouched();
+
+    // FIX: Use URL.createObjectURL instead of FileReader — no async leak, and we revoke on cleanup
+    this.previewUrl.set(URL.createObjectURL(file));
+  }
+
+  onSubmit(): void {
     if (this.uploadForm.invalid || !this.selectedFile()) {
       return;
     }
@@ -256,31 +428,54 @@ export class UploadDialogComponent implements OnInit {
     this.uploading.set(true);
 
     const formValue = this.uploadForm.value;
-    // BUG: Tags not properly parsed from comma-separated string
+
+    // FIX: Tags properly parsed from comma-separated string
+    const tags: string[] = formValue.tags
+      ? (formValue.tags as string).split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+      : [];
+
     const metadata = {
-      title: formValue.title,
-      tags: formValue.tags, // Should be: formValue.tags.split(',').map(t => t.trim())
-      isPublic: formValue.isPublic
+      title: formValue.title as string,
+      tags,
+      isPublic: formValue.isPublic as boolean
     };
 
-    // BUG: No error handling, no progress tracking
+    // FIX: Error handling + user-visible notification via NotificationService
     this.photoService.uploadPhoto(this.selectedFile()!, formValue.albumId, metadata)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result: Photo) => {
           this.uploading.set(false);
+          this.notificationService.show('Photo uploaded successfully', 'success');
           this.uploaded.emit(result);
         },
         error: (error: HttpErrorResponse) => {
           this.uploading.set(false);
-          console.error('Upload failed:', error);
-          // BUG: No user-visible error notification
+          this.notificationService.show(
+            error.message || 'Upload failed. Please try again.',
+            'error'
+          );
         }
       });
   }
 
-  close() {
-    // BUG: No cleanup of preview URL (URL.revokeObjectURL not called)
+  close(): void {
+    this.cleanup();
     this.closed.emit();
+  }
+
+  /** Revoke the current blob preview URL if one exists */
+  private revokePreviewUrl(): void {
+    const url = this.previewUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+      this.previewUrl.set(null);
+    }
+  }
+
+  /** Clean up blob URL and restore focus to previously focused element */
+  private cleanup(): void {
+    this.revokePreviewUrl();
+    (this.previouslyFocusedElement as HTMLElement | null)?.focus();
   }
 }

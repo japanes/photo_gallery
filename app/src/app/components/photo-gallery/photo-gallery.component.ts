@@ -93,6 +93,7 @@ import { Photo } from '../../models/photo.model';
 
       @if (showUploadDialog()) {
         <app-upload-dialog
+          [preselectedAlbumId]="currentAlbumId()"
           (closed)="showUploadDialog.set(false)"
           (uploaded)="onPhotoUploaded($event)">
         </app-upload-dialog>
@@ -232,6 +233,7 @@ export class PhotoGalleryComponent {
   // Local UI state signals
   sortBy = signal('date');
   showUploadDialog = signal(false);
+  currentAlbumId = signal<number | undefined>(undefined);
   currentPage = signal(1);
   pageSize = signal(20);
 
@@ -298,6 +300,7 @@ export class PhotoGalleryComponent {
     ).subscribe({
       next: (params) => {
         const albumId = params['albumId'] ? Number(params['albumId']) : undefined;
+        this.currentAlbumId.set(albumId);
         this.photoService.getPhotos(albumId);
       }
     });

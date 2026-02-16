@@ -23,6 +23,14 @@ import { Album } from '../../models/photo.model';
           </div>
         } @else {
           <ul class="album-list">
+            <li
+              [class.active]="selectedAlbumId() === null"
+              (click)="selectAllPhotos()"
+              (keydown.enter)="selectAllPhotos()"
+              tabindex="0">
+              <span class="album-initial all-photos" aria-hidden="true">&#9776;</span>
+              <span class="album-name">All Photos</span>
+            </li>
             @for (album of albums(); track album.id) {
               <li
                 [class.active]="selectedAlbumId() === album.id"
@@ -157,6 +165,10 @@ import { Album } from '../../models/photo.model';
       font-weight: bold;
       flex-shrink: 0;
     }
+    .album-initial.all-photos {
+      background: var(--text-secondary, #6b7280);
+      font-size: 16px;
+    }
     .album-name {
       flex: 1;
       overflow: hidden;
@@ -274,10 +286,10 @@ export class SidebarComponent {
   private notificationService = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
 
-  albumSelected = output<number>();
+  albumSelected = output<number | null>();
 
-  albums = signal<Album[]>([]);
-  albumsLoading = signal(true);
+  readonly albums = this.photoService.albums;
+  readonly albumsLoading = this.photoService.albumsLoading;
   selectedAlbumId = signal<number | null>(null);
 
   readonly selectedTags = this.photoService.selectedTags;
@@ -290,20 +302,15 @@ export class SidebarComponent {
   totalAlbums = computed(() => this.albums().length);
 
   constructor() {
-    this.photoService.getAlbums().pipe(
-      takeUntilDestroyed()
-    ).subscribe({
-      next: (albums) => {
-        this.albums.set(albums);
-        this.albumsLoading.set(false);
-      },
-      error: () => {
-        this.albumsLoading.set(false);
-      }
-    });
+    this.photoService.loadAlbums();
   }
 
-  selectAlbum(album: Album) {
+  selectAllPhotos(): void {
+    this.selectedAlbumId.set(null);
+    this.albumSelected.emit(null);
+  }
+
+  selectAlbum(album: Album): void {
     this.selectedAlbumId.set(album.id);
     this.albumSelected.emit(album.id);
   }
@@ -322,7 +329,6 @@ export class SidebarComponent {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (album) => {
-        this.albums.update(current => [...current, album]);
         this.notificationService.show(`Album "${album.name}" created`, 'success', 3000);
       },
       error: () => {

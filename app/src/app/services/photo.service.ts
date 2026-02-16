@@ -19,6 +19,8 @@ export class PhotoService {
   private _error = signal<string | null>(null);
   private _selectedTags = signal<string[]>([]);
   private _searchQuery = signal('');
+  private _albums = signal<Album[]>([]);
+  private _albumsLoading = signal(false);
 
   // Public readonly signals
   readonly photos = this._photos.asReadonly();
@@ -28,6 +30,8 @@ export class PhotoService {
   readonly error = this._error.asReadonly();
   readonly selectedTags = this._selectedTags.asReadonly();
   readonly searchQuery = this._searchQuery.asReadonly();
+  readonly albums = this._albums.asReadonly();
+  readonly albumsLoading = this._albumsLoading.asReadonly();
 
   // Computed derived state
   readonly totalPhotos = computed(() => this._photos().length);
@@ -121,7 +125,8 @@ export class PhotoService {
         }
         if (event.type === HttpEventType.Response) {
           this._uploadProgress.set(null);
-          return createPhoto(event.body as Photo);
+          // Merge client-side metadata into the response since the mock API won't echo it back
+          return createPhoto({ ...(event.body as Photo), ...metadata });
         }
         return null;
       }),
@@ -196,8 +201,13 @@ export class PhotoService {
     this._searchQuery.set(query);
   }
 
-  getAlbums(): Observable<Album[]> {
-    return this.http.get<Array<{ userId: number; id: number; title: string }>>(
+  /** Loads albums into the shared signal. Safe to call multiple times — skips if already loaded. */
+  loadAlbums(): void {
+    if (this._albums().length > 0 || this._albumsLoading()) {
+      return;
+    }
+    this._albumsLoading.set(true);
+    this.http.get<Array<{ userId: number; id: number; title: string }>>(
       `${this.apiUrl}/albums`
     ).pipe(
       map(data => data.map(item => ({
@@ -212,9 +222,15 @@ export class PhotoService {
       }))),
       catchError((err: { message: string }) => {
         this._error.set(err.message ?? 'Failed to load albums');
-        return of([]);
-      })
-    );
+        return of([] as Album[]);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (albums) => {
+        this._albums.set(albums);
+        this._albumsLoading.set(false);
+      }
+    });
   }
 
   createAlbum(name: string): Observable<Album> {
@@ -222,16 +238,21 @@ export class PhotoService {
       `${this.apiUrl}/albums`,
       { title: name, userId: 1 }
     ).pipe(
-      map(data => ({
-        id: data.id,
-        name: data.title,
-        description: '',
-        photos: [],
-        createdAt: new Date(),
-        ownerId: data.userId,
-        coverPhotoUrl: '',
-        isPublic: true,
-      })),
+      map(data => {
+        const album: Album = {
+          id: data.id,
+          name: data.title,
+          description: '',
+          photos: [],
+          createdAt: new Date(),
+          ownerId: data.userId,
+          coverPhotoUrl: '',
+          isPublic: true,
+        };
+        // Update the shared albums signal so all consumers see the new album
+        this._albums.update(current => [...current, album]);
+        return album;
+      }),
       catchError((err: { message: string }) => {
         this._error.set(err.message ?? 'Failed to create album');
         throw err;

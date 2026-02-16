@@ -68,7 +68,11 @@ export class AppComponent {
     this.showSidebar.update(v => !v);
   }
 
-  onAlbumSelected(albumId: number) {
-    this.router.navigate(['/gallery', albumId]);
+  onAlbumSelected(albumId: number | null) {
+    if (albumId === null) {
+      this.router.navigate(['/gallery']);
+    } else {
+      this.router.navigate(['/gallery', albumId]);
+    }
   }
 }
