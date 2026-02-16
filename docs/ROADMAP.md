@@ -105,15 +105,15 @@
 - [x] Reloads all photos instead of adding to existing list (line 293)
 
 ### `components/photo-card/photo-card.component.ts`
-- [ ] No NgOptimizedImage, no lazy loading, no alt text derived from data (template, line 12)
-- [ ] No error handling for broken images (template, line 13)
-- [ ] Pipe `truncate` used but might not work correctly (template, line 19)
-- [ ] No date formatting, raw date string shown (template, line 26)
-- [ ] No aria labels, no keyboard support (template, line 31)
-- [ ] Tags rendered without proper styling or click handling (template, line 37)
-- [ ] No placeholder/skeleton while loading (styles, line 64)
-- [ ] No text overflow handling (styles, line 72)
-- [ ] No confirmation before emitting delete (line 143)
+- [x] No NgOptimizedImage, no lazy loading, no alt text derived from data (template, line 12)
+- [x] No error handling for broken images (template, line 13)
+- [x] Pipe `truncate` used but might not work correctly (template, line 19)
+- [x] No date formatting, raw date string shown (template, line 26)
+- [x] No aria labels, no keyboard support (template, line 31)
+- [x] Tags rendered without proper styling or click handling (template, line 37)
+- [x] No placeholder/skeleton while loading (styles, line 64)
+- [x] No text overflow handling (styles, line 72)
+- [x] No confirmation before emitting delete (line 143)
 
 ### `components/sidebar/sidebar.component.ts`
 - [ ] No semantic HTML — should use `<aside>`, `<nav>` (template, line 10)

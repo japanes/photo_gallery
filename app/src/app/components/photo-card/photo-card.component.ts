@@ -1,44 +1,61 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
+import { NgOptimizedImage, DatePipe } from '@angular/common';
 import { TruncatePipe } from '../../pipes/truncate.pipe';
 import { Photo } from '../../models/photo.model';
 
 @Component({
   selector: 'app-photo-card',
   standalone: true,
-  imports: [TruncatePipe],
+  imports: [NgOptimizedImage, DatePipe, TruncatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="photo-card" (click)="onSelect()">
-      <!-- BUG: No NgOptimizedImage, no lazy loading, no alt text derived from data -->
-      <!-- BUG: No error handling for broken images -->
-      <img [src]="photo()?.thumbnailUrl" alt="photo" class="photo-image">
+    <div class="photo-card" (click)="onSelect()" (keydown.enter)="onSelect()" tabindex="0" role="article" [attr.aria-label]="'Photo: ' + photo().title">
+      <div class="photo-image-container">
+        @if (imageError()) {
+          <div class="photo-image-fallback">
+            <span>Image unavailable</span>
+          </div>
+        } @else {
+          <img
+            [ngSrc]="photo().thumbnailUrl"
+            [alt]="photo().title"
+            fill
+            loading="lazy"
+            (error)="onImageError()"
+            class="photo-image"
+          >
+        }
+      </div>
 
       <div class="photo-info">
-        <h3 class="photo-title">{{ photo()?.title }}</h3>
+        <h3 class="photo-title">{{ photo().title }}</h3>
 
-        <!-- BUG: Pipe 'truncate' used but might not work correctly -->
-        <p class="photo-description">{{ photo()?.title | truncate:50 }}</p>
+        <p class="photo-description">{{ photo().title | truncate:50 }}</p>
 
         <div class="photo-meta">
-          <span class="likes" (click)="onLike($event)">
-            ❤️ {{ photo()?.likes }}
+          <span class="likes" (click)="onLike($event)" (keydown.enter)="onLike($event)" tabindex="0" role="button" aria-label="Like this photo">
+            ❤️ {{ photo().likes }}
           </span>
-          <!-- BUG: No date formatting, raw date string shown -->
-          <span class="date">{{ photo()?.uploadedAt }}</span>
+          <span class="date">{{ photo().uploadedAt | date:'mediumDate' }}</span>
         </div>
 
         <div class="photo-actions">
-          <!-- BUG: No aria labels, no keyboard support -->
-          <button (click)="onLike($event)" class="btn-like">Like</button>
-          <button (click)="onDelete($event)" class="btn-delete">Delete</button>
+          <button (click)="onLike($event)" class="btn-like" aria-label="Like this photo">Like</button>
+          <button (click)="onDelete($event)" class="btn-delete" aria-label="Delete this photo">Delete</button>
         </div>
       </div>
 
-      <!-- BUG: Tags rendered without proper styling or click handling -->
-      @if (photo()?.tags?.length) {
+      @if (photo().tags.length) {
         <div class="photo-tags">
           @for (tag of photo().tags; track tag) {
-            <span class="tag">{{ tag }}</span>
+            <span
+              class="tag"
+              role="button"
+              tabindex="0"
+              (click)="onTagClick($event, tag)"
+              (keydown.enter)="onTagClick($event, tag)"
+              [attr.aria-label]="'Filter by tag: ' + tag"
+            >{{ tag }}</span>
           }
         </div>
       }
@@ -53,15 +70,32 @@ import { Photo } from '../../models/photo.model';
       cursor: pointer;
       background: var(--bg-primary);
     }
+    .photo-card:focus-visible {
+      outline: 2px solid var(--focus-color, #2196f3);
+      outline-offset: 2px;
+    }
     .photo-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px var(--card-shadow);
     }
-    .photo-image {
+    .photo-image-container {
+      position: relative;
       width: 100%;
       height: 200px;
+      background: var(--skeleton-bg, #e0e0e0);
+    }
+    .photo-image {
       object-fit: cover;
-      /* BUG: No placeholder/skeleton while loading */
+    }
+    .photo-image-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--skeleton-bg, #e0e0e0);
+      color: var(--text-tertiary);
+      font-size: 12px;
     }
     .photo-info {
       padding: 12px;
@@ -69,12 +103,19 @@ import { Photo } from '../../models/photo.model';
     .photo-title {
       font-size: 14px;
       margin: 0 0 8px 0;
-      /* BUG: No text overflow handling */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .photo-description {
       font-size: 12px;
       color: var(--text-secondary);
       margin: 0 0 8px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
     .photo-meta {
       display: flex;
@@ -85,6 +126,10 @@ import { Photo } from '../../models/photo.model';
     }
     .likes {
       cursor: pointer;
+    }
+    .likes:focus-visible {
+      outline: 2px solid var(--focus-color, #2196f3);
+      border-radius: 4px;
     }
     .photo-actions {
       display: flex;
@@ -99,6 +144,10 @@ import { Photo } from '../../models/photo.model';
       font-size: 12px;
       background: var(--bg-primary);
       color: var(--text-primary);
+    }
+    .photo-actions button:focus-visible {
+      outline: 2px solid var(--focus-color, #2196f3);
+      outline-offset: 2px;
     }
     .btn-like {
       color: #e74c3c !important;
@@ -119,6 +168,16 @@ import { Photo } from '../../models/photo.model';
       border-radius: 12px;
       font-size: 11px;
       color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .tag:hover {
+      background: var(--tag-bg-hover, #c0c0c0);
+      color: var(--text-primary);
+    }
+    .tag:focus-visible {
+      outline: 2px solid var(--focus-color, #2196f3);
+      outline-offset: 2px;
     }
   `]
 })
@@ -128,19 +187,32 @@ export class PhotoCardComponent {
   liked = output<number>();
   deleted = output<number>();
   selected = output<Photo>();
+  tagClicked = output<string>();
 
-  onSelect() {
+  imageError = signal(false);
+
+  onSelect(): void {
     this.selected.emit(this.photo());
   }
 
-  onLike(event: Event) {
+  onLike(event: Event): void {
     event.stopPropagation();
     this.liked.emit(this.photo().id);
   }
 
-  onDelete(event: Event) {
+  onDelete(event: Event): void {
     event.stopPropagation();
-    // BUG: No confirmation before emitting delete
-    this.deleted.emit(this.photo().id);
+    if (confirm('Are you sure you want to delete this photo?')) {
+      this.deleted.emit(this.photo().id);
+    }
+  }
+
+  onImageError(): void {
+    this.imageError.set(true);
+  }
+
+  onTagClick(event: Event, tag: string): void {
+    event.stopPropagation();
+    this.tagClicked.emit(tag);
   }
 }
