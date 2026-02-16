@@ -198,12 +198,20 @@ export class PhotoGalleryComponent {
   filteredPhotos = computed(() => {
     let result = [...this.photoService.photos()];
     const query = this.searchQuery();
+    const tags = this.photoService.selectedTags();
 
     // Filter by search query
     if (query) {
       const lowerQuery = query.toLowerCase();
       result = result.filter((p: Photo) =>
         p.title.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    // Filter by selected tags
+    if (tags.length > 0) {
+      result = result.filter((p: Photo) =>
+        tags.some(tag => p.tags.includes(tag))
       );
     }
 
@@ -235,12 +243,11 @@ export class PhotoGalleryComponent {
   });
 
   constructor() {
-    // Reset page to 1 when search or sort changes (fixes pagination bug)
+    // Reset page to 1 when any filter changes
     effect(() => {
-      // Read the signals to track them
       this.searchQuery();
       this.sortBy();
-      // Reset to page 1
+      this.photoService.selectedTags();
       this.currentPage.set(1);
     }, { allowSignalWrites: true });
 

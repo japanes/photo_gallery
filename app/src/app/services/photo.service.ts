@@ -16,6 +16,7 @@ export class PhotoService {
   private _uploadProgress = signal<UploadProgress | null>(null);
   private _loading = signal(false);
   private _error = signal<string | null>(null);
+  private _selectedTags = signal<string[]>([]);
 
   // Public readonly signals
   readonly photos = this._photos.asReadonly();
@@ -23,6 +24,7 @@ export class PhotoService {
   readonly uploadProgress = this._uploadProgress.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly selectedTags = this._selectedTags.asReadonly();
 
   // Computed derived state
   readonly totalPhotos = computed(() => this._photos().length);
@@ -100,6 +102,16 @@ export class PhotoService {
         p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p
       )
     );
+  }
+
+  toggleTag(tag: string): void {
+    this._selectedTags.update(current => {
+      const index = current.indexOf(tag);
+      if (index > -1) {
+        return current.filter(t => t !== tag);
+      }
+      return [...current, tag];
+    });
   }
 
   getAlbums(): Observable<Album[]> {

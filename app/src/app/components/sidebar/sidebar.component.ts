@@ -174,7 +174,7 @@ export class SidebarComponent {
   albumSelected = output<number>();
 
   selectedAlbumId = signal<number | null>(null);
-  selectedTags = signal<string[]>([]);
+  readonly selectedTags = this.photoService.selectedTags;
 
   // BUG: Hardcoded tags
   popularTags = ['nature', 'portrait', 'landscape', 'urban', 'macro', 'wedding', 'food'];
@@ -190,16 +190,7 @@ export class SidebarComponent {
   }
 
   toggleTag(tag: string) {
-    this.selectedTags.update(current => {
-      const index = current.indexOf(tag);
-      if (index > -1) {
-        return current.filter(t => t !== tag);
-      } else {
-        return [...current, tag];
-      }
-    });
-    // BUG: Tag filtering not connected to photo service
-    console.log('Selected tags:', this.selectedTags());
+    this.photoService.toggleTag(tag);
   }
 
   createAlbum() {
