@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ng serve)",
       "Bash(docker compose up -d)",
-      "Bash(docker compose down)"
+      "Bash(docker compose down)",
+      "Bash(docker compose logs -f --tail=300)"
     ]
   }
 }

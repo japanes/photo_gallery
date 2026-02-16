@@ -23,7 +23,10 @@
           }
         },
         "serve": {
-          "builder": "@angular/build:dev-server"
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "photo-manager-test:build"
+          }
         },
         "test": {
           "builder": "@angular/build:karma",
