@@ -1,5 +1,5 @@
 import { Component, signal, computed, effect, inject, ChangeDetectionStrategy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
@@ -7,7 +7,6 @@ import { NotificationService } from '../../services/notification.service';
 import { PhotoCardComponent } from '../photo-card/photo-card.component';
 import { UploadDialogComponent } from '../upload-dialog/upload-dialog.component';
 import { Photo } from '../../models/photo.model';
-import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-photo-gallery',
@@ -36,23 +35,34 @@ import { environment } from '@env/environment';
         </div>
       </div>
 
-      <!-- BUG: No loading skeleton, just a spinner -->
       @if (loading()) {
-        <div class="loading">
-          <div class="spinner"></div>
-          Loading...
+        <div class="photo-grid">
+          @for (item of skeletonItems; track item) {
+            <div class="skeleton-card">
+              <div class="skeleton-image"></div>
+              <div class="skeleton-text"></div>
+              <div class="skeleton-text short"></div>
+            </div>
+          }
         </div>
       }
 
-      <!-- BUG: No empty state handling -->
       @if (error()) {
         <div class="error">
           {{ error() }}
         </div>
       }
 
-      <!-- BUG: No trackBy function, will re-render entire list on any change -->
-      @if (!loading()) {
+      @if (!loading() && !error() && filteredPhotos().length === 0) {
+        <div class="empty-state">
+          <p>No photos found</p>
+          @if (searchQuery()) {
+            <p class="empty-state-hint">Try adjusting your search or filters</p>
+          }
+        </div>
+      }
+
+      @if (!loading() && filteredPhotos().length > 0) {
         <div class="photo-grid">
           @for (photo of paginatedPhotos(); track photo.id) {
             <app-photo-card
@@ -65,7 +75,6 @@ import { environment } from '@env/environment';
         </div>
       }
 
-      <!-- BUG: Pagination is broken - always shows page 1 -->
       @if (paginatedPhotos().length > 0) {
         <div class="pagination">
           <button
@@ -120,25 +129,43 @@ import { environment } from '@env/environment';
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 16px;
     }
-    .loading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 200px;
-      flex-direction: column;
-      gap: 10px;
+    .skeleton-card {
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-light);
     }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--border-color);
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+    .skeleton-image {
+      width: 100%;
+      height: 180px;
+      background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-input) 50%, var(--border-light) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .skeleton-text {
+      height: 14px;
+      margin: 12px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-input) 50%, var(--border-light) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .skeleton-text.short {
+      width: 60%;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary, #666);
+    }
+    .empty-state-hint {
+      font-size: 14px;
+      margin-top: 8px;
+      opacity: 0.7;
     }
     .error {
       color: #e74c3c;
@@ -189,8 +216,11 @@ import { environment } from '@env/environment';
 })
 export class PhotoGalleryComponent {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   readonly photoService = inject(PhotoService);
   private notificationService = inject(NotificationService);
+
+  readonly skeletonItems = Array.from({ length: 8 }, (_, i) => i);
 
   // Read service signals directly
   readonly loading = this.photoService.loading;
@@ -290,19 +320,21 @@ export class PhotoGalleryComponent {
   }
 
   onPhotoDeleted(photoId: number) {
-    // BUG: No confirmation dialog before deletion
+    if (!confirm('Are you sure you want to delete this photo?')) {
+      return;
+    }
     this.photoService.deletePhoto(photoId);
     this.notificationService.show('Photo deleted', 'success', 3000);
   }
 
   onPhotoSelected(photo: Photo) {
-    // BUG: No navigation to detail view
-    if (environment.debug) { console.log('Selected photo:', photo); }
+    this.photoService.selectPhoto(photo);
+    this.router.navigate(['/photo', photo.id]);
   }
 
   onPhotoUploaded(photo: Photo) {
     this.showUploadDialog.set(false);
+    this.photoService.addPhoto(photo);
     this.notificationService.show('Photo uploaded successfully!', 'success', 3000);
-    this.photoService.getPhotos(); // BUG: Reloads all photos instead of adding to existing list
   }
 }

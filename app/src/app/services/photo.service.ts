@@ -157,6 +157,10 @@ export class PhotoService {
     );
   }
 
+  addPhoto(photo: Photo): void {
+    this._photos.update(current => [photo, ...current]);
+  }
+
   // Immutable update via _photos.update() + spread
   likePhoto(id: number): void {
     this._photos.update(current =>

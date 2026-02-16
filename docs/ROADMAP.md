@@ -96,13 +96,13 @@
 - [x] Direct DOM manipulation (line 145)
 
 ### `components/photo-gallery/photo-gallery.component.ts`
-- [ ] No loading skeleton, just a spinner (template, line 36)
-- [ ] No empty state handling (template, line 44)
-- [ ] No trackBy function, will re-render entire list on any change (template, line 51)
-- [ ] Pagination is broken — always shows page 1 (template, line 65)
-- [ ] No confirmation dialog before deletion (line 280)
-- [ ] No navigation to detail view, just logs (line 286)
-- [ ] Reloads all photos instead of adding to existing list (line 293)
+- [x] No loading skeleton, just a spinner (template, line 36)
+- [x] No empty state handling (template, line 44)
+- [x] No trackBy function, will re-render entire list on any change (template, line 51)
+- [x] Pagination is broken — always shows page 1 (template, line 65)
+- [x] No confirmation dialog before deletion (line 280)
+- [x] No navigation to detail view, just logs (line 286)
+- [x] Reloads all photos instead of adding to existing list (line 293)
 
 ### `components/photo-card/photo-card.component.ts`
 - [ ] No NgOptimizedImage, no lazy loading, no alt text derived from data (template, line 12)
