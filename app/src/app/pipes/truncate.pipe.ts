@@ -1,18 +1,29 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-// BUG: Not marked as pure (default is pure, but implementation has side effects potential)
 @Pipe({
   name: 'truncate',
-  standalone: true
+  standalone: true,
+  pure: true
 })
 export class TruncatePipe implements PipeTransform {
-  // BUG: No null/undefined handling, will throw on null values
-  transform(value: string, limit: number = 50, trail: string = '...'): string {
-    // BUG: No type checking - will crash if value is not a string
-    if (value.length <= limit) {
-      return value;
+  transform(value: string | null | undefined, limit: number = 50, trail: string = '...'): string {
+    if (value == null) {
+      return '';
     }
-    // BUG: Cuts in the middle of words
-    return value.substring(0, limit) + trail;
+
+    const str = String(value);
+
+    if (str.length <= limit) {
+      return str;
+    }
+
+    const truncated = str.substring(0, limit);
+    const lastSpace = truncated.lastIndexOf(' ');
+
+    if (lastSpace > limit * 0.3) {
+      return truncated.substring(0, lastSpace) + trail;
+    }
+
+    return truncated + trail;
   }
 }

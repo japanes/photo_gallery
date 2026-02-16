@@ -1,27 +1,44 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-// BUG: Impure pipe for time - will recalculate on every change detection
 @Pipe({
   name: 'timeAgo',
   standalone: true,
-  pure: false // BUG: Impure pipe causes performance issues
+  pure: true
 })
 export class TimeAgoPipe implements PipeTransform {
-  transform(value: string | Date): string {
-    if (!value) return '';
+  transform(value: string | Date | null | undefined): string {
+    if (value == null) {
+      return '';
+    }
 
-    // BUG: No timezone handling
-    const now = new Date();
-    const date = new Date(value);
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const date = value instanceof Date ? value : new Date(value);
+
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+
+    const now = Date.now();
+    const seconds = Math.floor((now - date.getTime()) / 1000);
+
+    if (seconds < 0) {
+      return 'just now';
+    }
 
     if (seconds < 60) return 'just now';
-    if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
-    if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
-    if (seconds < 2592000) return Math.floor(seconds / 86400) + ' days ago';
-    // BUG: No handling for months/years, falls through to undefined
-    if (seconds < 31536000) return Math.floor(seconds / 2592000) + ' months ago';
 
-    return Math.floor(seconds / 31536000) + ' years ago';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+
+    const hours = Math.floor(seconds / 3600);
+    if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+
+    const days = Math.floor(seconds / 86400);
+    if (days < 30) return days === 1 ? '1 day ago' : `${days} days ago`;
+
+    const months = Math.floor(seconds / 2592000);
+    if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`;
+
+    const years = Math.floor(seconds / 31536000);
+    return years === 1 ? '1 year ago' : `${years} years ago`;
   }
 }

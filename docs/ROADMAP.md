@@ -49,21 +49,21 @@
 - [x] No actual navigation or filtering logic for album selection (line 75)
 
 ### `pipes/truncate.pipe.ts`
-- [ ] Not marked as pure — implementation has side effects potential (line 3)
-- [ ] No null/undefined handling, will throw on null values (line 9)
-- [ ] No type checking — will crash if value is not a string (line 11)
-- [ ] Cuts in the middle of words (line 15)
+- [x] Not marked as pure — implementation has side effects potential (line 3)
+- [x] No null/undefined handling, will throw on null values (line 9)
+- [x] No type checking — will crash if value is not a string (line 11)
+- [x] Cuts in the middle of words (line 15)
 
 ### `pipes/time-ago.pipe.ts`
-- [ ] Impure pipe for time — recalculates on every change detection (line 3)
-- [ ] `pure: false` causes performance issues (line 7)
-- [ ] No timezone handling (line 13)
-- [ ] No handling for months/years, falls through to undefined (line 22)
+- [x] Impure pipe for time — recalculates on every change detection (line 3)
+- [x] `pure: false` causes performance issues (line 7)
+- [x] No timezone handling (line 13)
+- [x] No handling for months/years, falls through to undefined (line 22)
 
 ### `pipes/file-size.pipe.ts`
-- [ ] Using 1000 instead of 1024 for binary file sizes (line 8)
-- [ ] No handling for negative numbers or NaN (line 9)
-- [ ] `const k = 1000` — should be 1024 for binary (line 13)
+- [x] Using 1000 instead of 1024 for binary file sizes (line 8)
+- [x] No handling for negative numbers or NaN (line 9)
+- [x] `const k = 1000` — should be 1024 for binary (line 13)
 
 ### `services/photo.service.ts`
 - [ ] Hardcoded API URL, should use environment config (line 35)
