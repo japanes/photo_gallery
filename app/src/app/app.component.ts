@@ -1,11 +1,10 @@
 import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { Album } from './models/photo.model';
-import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-root',
@@ -61,6 +60,7 @@ import { environment } from '@env/environment';
   `]
 })
 export class AppComponent {
+  private router = inject(Router);
   readonly authService = inject(AuthService);
   readonly themeService = inject(ThemeService);
 
@@ -72,8 +72,6 @@ export class AppComponent {
   }
 
   onAlbumSelected(albumId: number) {
-    if (environment.debug) { console.log('Album selected:', albumId); }
-    // BUG: No actual navigation or filtering logic
+    this.router.navigate(['/gallery', albumId]);
   }
-
 }

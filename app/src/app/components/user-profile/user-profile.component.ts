@@ -17,8 +17,16 @@ import { environment } from '@env/environment';
     @if (user()) {
       <div class="profile-container">
         <div class="profile-header">
-          <!-- BUG: No NgOptimizedImage -->
-          <img [src]="user()!.avatarUrl" alt="avatar" class="profile-avatar">
+          @if (!avatarFailed()) {
+            <img [src]="user()!.avatarUrl" alt="avatar" class="profile-avatar"
+              (error)="avatarFailed.set(true)">
+          } @else {
+            <span class="profile-avatar avatar-fallback">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+              </svg>
+            </span>
+          }
           <div class="profile-info">
             <h2>{{ user()!.name }}</h2>
             <p>{{ user()!.email }}</p>
@@ -101,6 +109,17 @@ import { environment } from '@env/environment';
       border-radius: 50%;
       object-fit: cover;
       border: 3px solid #3498db;
+    }
+    .avatar-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #95a5a6;
+      color: white;
+    }
+    .avatar-fallback svg {
+      width: 56px;
+      height: 56px;
     }
     .profile-info h2 {
       margin: 0 0 4px 0;
@@ -207,6 +226,7 @@ export class UserProfileComponent implements OnInit {
   // Read user from auth service signal
   readonly user = this.authService.currentUser;
 
+  avatarFailed = signal(false);
   userPhotos = signal<Photo[]>([]);
   userAlbums = signal<Album[]>([]);
 

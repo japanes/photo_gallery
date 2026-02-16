@@ -38,10 +38,9 @@ export class PhotoService {
   // BUG: No error handling, returns any, no typing
   getPhotos(albumId?: number): void {
     this._loading.set(true);
-    let url = `${this.apiUrl}/photos`;
-    if (albumId) {
-      url += `?albumId=${albumId}`;
-    }
+    const url = albumId
+      ? `${this.apiUrl}/albums/${albumId}/photos`
+      : `${this.apiUrl}/photos`;
 
     this.http.get<Photo[]>(url).pipe(
       takeUntilDestroyed(this.destroyRef)

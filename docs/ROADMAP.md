@@ -46,7 +46,7 @@
 
 ### `app.component.ts`
 - [x] Console.log left in code (line 74)
-- [ ] No actual navigation or filtering logic for album selection (line 75)
+- [x] No actual navigation or filtering logic for album selection (line 75)
 
 ### `pipes/truncate.pipe.ts`
 - [ ] Not marked as pure — implementation has side effects potential (line 3)
@@ -93,7 +93,7 @@
 - [ ] No actual search implementation (line 129)
 - [ ] Hardcoded credentials for "demo" — security issue (line 134)
 - [ ] No confirmation dialog on logout (line 139)
-- [ ] Direct DOM manipulation (line 145)
+- [x] Direct DOM manipulation (line 145)
 
 ### `components/photo-gallery/photo-gallery.component.ts`
 - [ ] No loading skeleton, just a spinner (template, line 36)

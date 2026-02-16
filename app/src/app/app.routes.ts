@@ -4,7 +4,8 @@ import { UserProfileComponent } from './components/user-profile/user-profile.com
 
 export const routes: Routes = [
   { path: '', redirectTo: '/gallery', pathMatch: 'full' },
-  { path: 'gallery', component: PhotoGalleryComponent }, // FIX: was HeaderComponent
+  { path: 'gallery', component: PhotoGalleryComponent },
+  { path: 'gallery/:albumId', component: PhotoGalleryComponent },
   { path: 'profile', component: UserProfileComponent },
   { path: '**', redirectTo: '/gallery' }
 ];

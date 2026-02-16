@@ -1,5 +1,7 @@
 import { Component, signal, computed, effect, inject, ChangeDetectionStrategy } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PhotoService } from '../../services/photo.service';
 import { NotificationService } from '../../services/notification.service';
 import { PhotoCardComponent } from '../photo-card/photo-card.component';
@@ -186,6 +188,7 @@ import { environment } from '@env/environment';
   `]
 })
 export class PhotoGalleryComponent {
+  private route = inject(ActivatedRoute);
   private photoService = inject(PhotoService);
   private notificationService = inject(NotificationService);
 
@@ -257,8 +260,15 @@ export class PhotoGalleryComponent {
       this.currentPage.set(1);
     }, { allowSignalWrites: true });
 
-    // Load photos on init
-    this.photoService.getPhotos();
+    // Load photos based on :albumId route param (re-fetches on param change)
+    this.route.params.pipe(
+      takeUntilDestroyed()
+    ).subscribe({
+      next: (params) => {
+        const albumId = params['albumId'] ? Number(params['albumId']) : undefined;
+        this.photoService.getPhotos(albumId);
+      }
+    });
   }
 
   previousPage() {

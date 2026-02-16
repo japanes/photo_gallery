@@ -1,4 +1,4 @@
-import { Component, input, output, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -33,10 +33,18 @@ import { environment } from '@env/environment';
         @if (authService.isAuthenticated()) {
           <div class="user-info">
             <span>{{ user()?.name }}</span>
-            <img
-              [src]="user()?.avatarUrl || 'assets/default-avatar.png'"
-              class="avatar"
-              (error)="onAvatarError($event)">
+            @if (!avatarFailed()) {
+              <img
+                [src]="user()?.avatarUrl"
+                class="avatar"
+                (error)="avatarFailed.set(true)">
+            } @else {
+              <span class="avatar avatar-fallback">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                </svg>
+              </span>
+            }
             <button (click)="onLogout()">Logout</button>
           </div>
         }
@@ -102,6 +110,17 @@ import { environment } from '@env/environment';
       border-radius: 50%;
       object-fit: cover;
     }
+    .avatar-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #95a5a6;
+      color: white;
+    }
+    .avatar-fallback svg {
+      width: 20px;
+      height: 20px;
+    }
     .header-right button {
       padding: 6px 12px;
       border: 1px solid rgba(255,255,255,0.3);
@@ -124,6 +143,7 @@ export class HeaderComponent {
   toggleSidebar = output<void>();
   toggleDarkMode = output<void>();
 
+  avatarFailed = signal(false);
   globalSearchQuery = '';
 
   onGlobalSearch() {
@@ -142,8 +162,4 @@ export class HeaderComponent {
     this.router.navigate(['/']);
   }
 
-  onAvatarError(event: Event) {
-    // BUG: Direct DOM manipulation
-    (event.target as HTMLImageElement).src = 'assets/default-avatar.png';
-  }
 }
